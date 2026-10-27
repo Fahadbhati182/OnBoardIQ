@@ -1,0 +1,8 @@
+| Module | What it does | Main concepts |
+
+| AI Knowledge Assistant | Answers questions about company documents | RAG, embeddings, vector databases |
+| Employee Onboarding Dashboard | Displays onboarding progress and pending tasks | Full stack development, database design |
+| Personalized Learning Path | Recommends training based on role and experience | Recommendations, LLMs, structured output |
+| AI Workflow Agent | Helps employees complete onboarding tasks | Agents, tools, LangGraph |
+| Policy & Access Control | Restricts answers according to employee permissions | Authentication, RBAC, secure retrieval |
+| AI Evaluation Dashboard | Measures answer quality, retrieval quality, and latency | RAG evaluation, tracing, monitoring |
