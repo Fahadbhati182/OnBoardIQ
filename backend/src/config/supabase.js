@@ -1,16 +1,16 @@
 import "dotenv/config";
-const { createClient } = require("@supabase/supabase-js");
+import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabasePublishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+const supabaseSecretKey = process.env.SUPABASE_SECRET_KEY;
 
-if (!supabaseUrl || !supabasePublishableKey) {
+if (!supabaseUrl || !supabaseSecretKey) {
   throw new Error(
-    "SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY must be set in the environment",
+    "SUPABASE_URL and SUPABASE_SECRET_KEY must be set in the environment",
   );
 }
 
-const supabase = createClient(supabaseUrl, supabasePublishableKey, {
+const supabase = createClient(supabaseUrl, supabaseSecretKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
