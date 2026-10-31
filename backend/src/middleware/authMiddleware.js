@@ -8,7 +8,9 @@ export async function requireAuth(req, _res, next) {
   const [scheme, token, ...extra] = authorization?.split(" ") ?? [];
 
   if (scheme !== "Bearer" || !token || extra.length > 0) {
-    return next(new ApiError(401, "You are not allowed to access this resource"));
+    return next(
+      new ApiError(401, "You are not allowed to access this resource"),
+    );
   }
 
   let claims;
@@ -16,7 +18,9 @@ export async function requireAuth(req, _res, next) {
     claims = verifyAccessToken(token);
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
-      return next(new ApiError(401, "You are not allowed to access this resource"));
+      return next(
+        new ApiError(401, "You are not allowed to access this resource"),
+      );
     }
     return next(error);
   }
@@ -26,7 +30,9 @@ export async function requireAuth(req, _res, next) {
     claims.type !== "access" ||
     typeof claims.sub !== "string"
   ) {
-    return next(new ApiError(401, "You are not allowed to access this resource"));
+    return next(
+      new ApiError(401, "You are not allowed to access this resource"),
+    );
   }
 
   const { data: user, error } = await supabase
@@ -40,7 +46,9 @@ export async function requireAuth(req, _res, next) {
     return next(new ApiError(500, "An unexpected database error occurred"));
   }
   if (!user?.is_active) {
-    return next(new ApiError(401, "You are not allowed to access this resource"));
+    return next(
+      new ApiError(401, "You are not allowed to access this resource"),
+    );
   }
 
   req.user = user;
@@ -63,4 +71,36 @@ export function allowedRoles(allowedUser) {
 
     next();
   };
+}
+
+import crypto from "node:crypto";
+
+export function requireServiceAuth(req, res, next) {
+  const authorization = req.headers.authorization;
+  const expectedToken = process.env.ONBOARDIQ_SERVICE_TOKEN;
+
+  if (!expectedToken || !authorization?.startsWith("Bearer ")) {
+    return res.status(401).json({
+      success: false,
+      message: "Service authentication required",
+    });
+  }
+
+  const providedToken = authorization.slice(7);
+  console.log(providedToken);
+
+  const provided = Buffer.from(providedToken);
+  const expected = Buffer.from(expectedToken);
+
+  if (
+    provided.length !== expected.length ||
+    !crypto.timingSafeEqual(provided, expected)
+  ) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid service credentials",
+    });
+  }
+
+  next();
 }

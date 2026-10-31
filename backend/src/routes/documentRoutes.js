@@ -3,14 +3,17 @@ import multer from "multer";
 import {
   allowedRoles,
   requireAuth,
+  requireServiceAuth,
 } from "../middleware/authMiddleware.js";
 import AsynHandler from "../utils/AsynHandler.js";
 import {
   archiveDocument,
   downloadDocument,
+  downloadDocumentForInternal,
   getDocument,
   listDocuments,
   listVersions,
+  listVersionsForInternal,
   publishDocument,
   updateDocument,
   uploadDocument,
@@ -21,24 +24,49 @@ const router = Router();
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: Number(process.env.MAX_DOCUMENT_SIZE_BYTES || 10 * 1024 * 1024) },
+  limits: {
+    fileSize: Number(process.env.MAX_DOCUMENT_SIZE_BYTES || 10 * 1024 * 1024),
+  },
 });
 
-const administrators = [
-  requireAuth,
-  allowedRoles(["HR_ADMIN"]),
-];
-
+const administrators = [requireAuth, allowedRoles(["HR_ADMIN"])];
 
 router.get("/", requireAuth, AsynHandler(listDocuments));
-router.post("/", ...administrators, upload.single("file"), AsynHandler(uploadDocument));
+router.post(
+  "/",
+  ...administrators,
+  upload.single("file"),
+  AsynHandler(uploadDocument),
+);
+
 router.get("/:id/download", requireAuth, AsynHandler(downloadDocument));
 router.get("/:id/versions", requireAuth, AsynHandler(listVersions));
-router.post("/:id/versions", ...administrators, upload.single("file"), AsynHandler(uploadVersion));
+
+router.post(
+  "/:id/versions",
+  ...administrators,
+  upload.single("file"),
+  AsynHandler(uploadVersion),
+);
 
 router.patch("/:id/archive", ...administrators, AsynHandler(archiveDocument));
 router.patch("/:id/publish", ...administrators, AsynHandler(publishDocument));
 router.patch("/:id", ...administrators, AsynHandler(updateDocument));
 router.get("/:id", requireAuth, AsynHandler(getDocument));
 
+// internal route for interservice communication
+router.get(
+  "/internal/:id/download",
+  requireServiceAuth,
+  AsynHandler(downloadDocumentForInternal),
+);
+
+router.get(
+  "/internal/:id/versions",
+  requireServiceAuth,
+  AsynHandler(listVersionsForInternal),
+);
+
 export default router;
+
+// /api/documents/internal/documents/:id/download

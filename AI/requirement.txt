@@ -1,0 +1,22 @@
+fastapi
+uvicorn[standard]
+pymupdf
+python-multipart
+pydantic-settings
+
+# LangChain
+langchain
+langchain-core
+langchain-community
+langchain-text-splitters
+
+# Embeddings
+sentence-transformers
+
+# Vector Database
+qdrant-client
+
+
+python-dotenv
+kafka-python
+pypdf

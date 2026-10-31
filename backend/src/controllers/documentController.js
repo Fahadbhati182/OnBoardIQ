@@ -14,6 +14,7 @@ import {
   canViewDocument,
   isAdministrator,
 } from "../services/documentAuthorization.js";
+import { sendKafkaMessage } from "../config/kafka.js";
 
 const DOCUMENT_COLUMNS =
   "id, title, description, document_type, status, department_id, access_scope, uploaded_by, created_at, updated_at";
@@ -210,7 +211,9 @@ export async function uploadDocument(req, res) {
       .insert({ ...metadata, status: "DRAFT", uploaded_by: req.user.id })
       .select(DOCUMENT_COLUMNS)
       .single();
+
     if (documentError) throw documentError;
+
     const { data: version, error: versionError } = await supabase
       .from("document_versions")
       .insert({
@@ -226,7 +229,20 @@ export async function uploadDocument(req, res) {
         "id, version_number, file_name, mime_type, file_size_bytes, created_at",
       )
       .single();
+
     if (versionError) throw versionError;
+
+    // send to queue for rag ingesiton pipeline
+    await sendKafkaMessage("document.uploaded", {
+      documentId: document.id,
+      versionId: version.id,
+      storageKey: stored.storageKey,
+      fileName: req.file.originalname,
+      mimeType: "application/pdf",
+    });
+
+    console.log("Send kafka message");
+
     res
       .status(201)
       .json({ success: true, data: mapDocument(document, version) });
@@ -365,4 +381,70 @@ export async function downloadDocument(req, res) {
     `attachment; filename="${version.file_name.replace(/["\r\n]/g, "")}"`,
   );
   streamPdf(info.absolutePath).pipe(res);
+}
+
+export async function downloadDocumentForInternal(req, res) {
+  const document = await findDocument(req.params.id);
+
+  const version = await latestVersion(document.id);
+
+  if (!version) {
+    throw new ApiError(404, "Document version was not found");
+  }
+
+  let info;
+
+  try {
+    info = await getPdfInfo(version.storage_path);
+  } catch {
+    throw new ApiError(404, "Document file was not found");
+  }
+
+  const safeFileName = version.file_name.replace(/["\r\n]/g, "");
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Length", info.size);
+
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="${safeFileName}"`,
+  );
+
+  const stream = streamPdf(info.absolutePath);
+
+  stream.on("error", (error) => {
+    console.error("Internal document download failed:", error);
+
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to stream document",
+      });
+    } else {
+      res.destroy(error);
+    }
+  });
+
+  stream.pipe(res);
+}
+
+export async function listVersionsForInternal(req, res) {
+  const document = await findDocument(req.params.id);
+
+  const { data, error } = await supabase
+    .from("document_versions")
+    .select(
+      "id, version_number, file_name, mime_type, file_size_bytes, uploaded_by, created_at",
+    )
+    .eq("document_id", document.id)
+    .order("version_number", { ascending: false });
+
+  if (error) {
+    throw new ApiError(500, "An unexpected database error occurred");
+  }
+
+  res.json({
+    success: true,
+    data: data || [],
+  });
 }
