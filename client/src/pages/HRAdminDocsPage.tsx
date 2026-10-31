@@ -1,34 +1,86 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { UploadDocModal } from '../components/UploadDocModal';
 import { DocumentCategory, DocumentItem } from '../types';
+import { ApiDocument, documentApi } from '../services/documentApi';
 import {
   Plus,
   Search,
   FileText,
-  Edit2,
-  Trash2,
   Download,
   Eye,
-  CheckCircle2,
-  AlertCircle,
-  MoreHorizontal,
 } from 'lucide-react';
 
+/* ─── Skeleton table row ───────────────────────────────────────────── */
+const SkeletonDocRow: React.FC = () => (
+  <tr className="animate-pulse">
+    <td className="py-4 px-6">
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-emerald-900/40" />
+        <div>
+          <div className="h-3.5 bg-emerald-900/40 rounded w-44 mb-1.5" />
+          <div className="h-2.5 bg-emerald-900/25 rounded w-24" />
+        </div>
+      </div>
+    </td>
+    <td className="py-4 px-4"><div className="h-5 bg-emerald-900/30 rounded w-16" /></td>
+    <td className="py-4 px-4"><div className="h-3 bg-emerald-900/25 rounded w-20" /></td>
+    <td className="py-4 px-4"><div className="h-3 bg-emerald-900/25 rounded w-10" /></td>
+    <td className="py-4 px-4"><div className="h-5 bg-emerald-900/30 rounded-full w-20" /></td>
+    <td className="py-4 px-4"><div className="h-3 bg-emerald-900/25 rounded w-24" /></td>
+    <td className="py-4 px-6 text-right">
+      <div className="flex justify-end gap-1.5">
+        <div className="w-7 h-7 bg-emerald-900/30 rounded" />
+        <div className="w-7 h-7 bg-emerald-900/30 rounded" />
+      </div>
+    </td>
+  </tr>
+);
+
 export const HRAdminDocsPage: React.FC = () => {
-  const { documents, toggleDocumentStatus, deleteDocument, setActiveDocModal, addToast } = useApp();
+  const { documents, setActiveDocModal, addToast } = useApp();
+  const [apiDocuments, setApiDocuments] = useState<ApiDocument[] | null>(null);
+  const [loadError, setLoadError] = useState('');
+  const [isLoading, setIsLoading] = useState(!!localStorage.getItem('accessToken'));
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const policiesCount = documents.filter((d) => d.category === 'Policies').length;
-  const guidesCount = documents.filter((d) => d.category === 'Guides').length;
-  const hrCount = documents.filter((d) => d.category === 'HR').length;
-  const itCount = documents.filter((d) => d.category === 'IT').length;
-  const draftsCount = documents.filter((d) => d.status === 'draft').length;
-  const totalCount = documents.length;
+  const loadDocuments = () => {
+    setIsLoading(true);
+    documentApi.list()
+      .then(setApiDocuments)
+      .catch((error: unknown) =>
+        setLoadError(error instanceof Error ? error.message : 'Unable to load documents'))
+      .finally(() => setIsLoading(false));
+  };
 
-  const filteredDocs = documents.filter((doc) => {
+  useEffect(() => { if (localStorage.getItem('accessToken')) void loadDocuments(); }, []);
+
+  const liveDocuments = apiDocuments?.map((doc) => ({
+    id: doc.id,
+    title: doc.title,
+    type: doc.documentType,
+    category: 'General' as DocumentCategory,
+    department: doc.departmentId || 'Company',
+    version: doc.currentVersion ? `v${doc.currentVersion.versionNumber}` : 'Draft',
+    status: doc.status === 'PUBLISHED' ? 'published' as const : 'draft' as const,
+    updatedAt: new Date(doc.updatedAt).toLocaleDateString(),
+    fileSize: doc.currentVersion ? `${Math.round(doc.currentVersion.fileSizeBytes / 1024)} KB` : 'Unavailable',
+    summary: doc.description || '',
+    keyPoints: [],
+    coverGradient: 'linear-gradient(135deg, #13392a 0%, #205c43 100%)',
+  }));
+  const visibleDocuments = liveDocuments || documents;
+
+  const policiesCount = visibleDocuments.filter((d) => d.category === 'Policies').length;
+  const guidesCount = visibleDocuments.filter((d) => d.category === 'Guides').length;
+  const hrCount = visibleDocuments.filter((d) => d.category === 'HR').length;
+  const itCount = visibleDocuments.filter((d) => d.category === 'IT').length;
+  const draftsCount = visibleDocuments.filter((d) => d.status === 'draft').length;
+  const totalCount = visibleDocuments.length;
+
+  const filteredDocs = visibleDocuments.filter((doc) => {
     let matchesTab = true;
     if (selectedTab === 'policies') matchesTab = doc.category === 'Policies';
     else if (selectedTab === 'guides') matchesTab = doc.category === 'Guides';
@@ -43,6 +95,31 @@ export const HRAdminDocsPage: React.FC = () => {
 
     return matchesTab && matchesSearch;
   });
+
+  const changeStatus = async (doc: DocumentItem) => {
+    if (!apiDocuments) return;
+    const live = apiDocuments.find((item) => item.id === doc.id);
+    if (!live) return;
+    try {
+      const updated = live.status === 'PUBLISHED'
+        ? await documentApi.archive(doc.id)
+        : await documentApi.publish(doc.id);
+      setApiDocuments((current) => current?.map((item) => item.id === updated.id ? updated : item) || null);
+      addToast(live.status === 'PUBLISHED' ? 'Document archived' : 'Document published', 'success');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Unable to update document status', 'error');
+    }
+  };
+
+  const download = async (doc: DocumentItem) => {
+    const live = apiDocuments?.find((item) => item.id === doc.id);
+    if (!live?.currentVersion) return;
+    try {
+      await documentApi.download(doc.id, live.currentVersion.fileName);
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Unable to download document', 'error');
+    }
+  };
 
   return (
     <div className="page-container">
@@ -71,6 +148,7 @@ export const HRAdminDocsPage: React.FC = () => {
         </button>
       </div>
 
+      {loadError && <p className="text-sm text-red-400 mb-4">{loadError}</p>}
       {/* Filter Tabs & Search */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-2 overflow-x-auto pb-2">
@@ -165,7 +243,9 @@ export const HRAdminDocsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-emerald-900/20 text-xs">
-              {filteredDocs.map((doc) => {
+              {isLoading
+                ? Array.from({ length: 6 }).map((_, i) => <SkeletonDocRow key={i} />)
+                : filteredDocs.map((doc) => {
                 const isPublished = doc.status === 'published';
 
                 return (
@@ -206,7 +286,7 @@ export const HRAdminDocsPage: React.FC = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          toggleDocumentStatus(doc.id);
+                          void changeStatus(doc);
                         }}
                         className={`status-pill ${isPublished ? 'published' : 'draft'} cursor-pointer hover:opacity-80`}
                         title="Click to toggle status"
@@ -229,20 +309,11 @@ export const HRAdminDocsPage: React.FC = () => {
                           <Eye size={15} />
                         </button>
                         <button
-                          onClick={() => {
-                            addToast(`Downloading ${doc.title}...`, 'info');
-                          }}
+                          onClick={() => void download(doc)}
                           className="p-1.5 rounded text-slate-400 hover:text-slate-100 hover:bg-white/[0.06] transition-colors"
                           title="Download"
                         >
                           <Download size={15} />
-                        </button>
-                        <button
-                          onClick={() => deleteDocument(doc.id)}
-                          className="p-1.5 rounded text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 size={15} />
                         </button>
                       </div>
                     </td>
@@ -255,7 +326,7 @@ export const HRAdminDocsPage: React.FC = () => {
       </div>
 
       {/* Upload Document Modal */}
-      <UploadDocModal isOpen={isUploadOpen} onClose={() => setIsUploadOpen(false)} />
+      <UploadDocModal isOpen={isUploadOpen} onClose={() => { setIsUploadOpen(false); void loadDocuments(); }} />
     </div>
   );
 };

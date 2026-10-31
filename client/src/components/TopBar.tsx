@@ -1,6 +1,15 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Search, Bell, Check, Sparkles, User, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { Search, Bell, Check, Sparkles, User, LogOut, ChevronDown, Palette } from 'lucide-react';
+import { ThemeId } from '../types';
+
+const themeOptions: { id: ThemeId; name: string; description: string; colors: [string, string, string] }[] = [
+  { id: 'default', name: 'Forest Default', description: 'Original green & champagne', colors: ['#06110d', '#0d221a', '#e7d7be'] },
+  { id: 'veo-onyx', name: 'Veo Onyx', description: 'Charcoal & soft white', colors: ['#111315', '#34383d', '#f1f3f4'] },
+  { id: 'midnight-azure', name: 'Midnight Azure', description: 'Deep blue & luminous', colors: ['#07152f', '#19346d', '#6f8eff'] },
+  { id: 'ocean-blue', name: 'Ocean Blue', description: 'Clear & confident', colors: ['#17213a', '#405989', '#9eb6ff'] },
+  { id: 'brainwave-slate', name: 'Brainwave Slate', description: 'Cool graphite & electric blue', colors: ['#1b2b3a', '#2f5c82', '#269bff'] },
+];
 
 export const TopBar: React.FC = () => {
   const {
@@ -11,11 +20,14 @@ export const TopBar: React.FC = () => {
     notifications,
     markAllNotificationsRead,
     currentUserRole,
-    setCurrentUserRole,
+    signOut,
+    theme,
+    setTheme,
   } = useApp();
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showThemePicker, setShowThemePicker] = useState(false);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -40,6 +52,48 @@ export const TopBar: React.FC = () => {
 
       {/* Right Actions */}
       <div style={styles.actionsGroup}>
+        <div className="theme-picker-wrap">
+          <button
+            className="theme-picker-trigger"
+            onClick={() => {
+              setShowThemePicker((visible) => !visible);
+              setShowNotifications(false);
+              setShowProfileMenu(false);
+            }}
+            title="Change color theme"
+          >
+            <Palette size={16} />
+            <span>Theme</span>
+          </button>
+          {showThemePicker && (
+            <div className="theme-picker-menu">
+              <strong>Color theme</strong>
+              <div className="theme-picker-options">
+                {themeOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    className={`theme-option ${theme === option.id ? 'selected' : ''}`}
+                    onClick={() => {
+                      setTheme(option.id);
+                      setShowThemePicker(false);
+                    }}
+                  >
+                    <span className="theme-preview" style={{ background: option.colors[0] }}>
+                      <i style={{ background: option.colors[2] }} />
+                      <i style={{ background: option.colors[1] }} />
+                    </span>
+                    <span className="theme-option-copy">
+                      <b>{option.name}</b>
+                      <small>{option.description}</small>
+                    </span>
+                    <span className="theme-radio" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Quick AI Assistant Trigger */}
         <button
           onClick={() => setCurrentPage('chat')}
@@ -137,53 +191,10 @@ export const TopBar: React.FC = () => {
 
               <div style={styles.menuDivider} />
 
-              <div style={styles.menuSubheading}>SWITCH ROLE</div>
-              <button
-                style={{
-                  ...styles.menuItem,
-                  ...(currentUserRole === 'employee' ? styles.menuItemActive : {}),
-                }}
-                onClick={() => {
-                  setCurrentUserRole('employee');
-                  setCurrentPage('dashboard');
-                  setShowProfileMenu(false);
-                }}
-              >
-                <span>Fahad (Employee)</span>
-              </button>
-              <button
-                style={{
-                  ...styles.menuItem,
-                  ...(currentUserRole === 'hr_admin' ? styles.menuItemActive : {}),
-                }}
-                onClick={() => {
-                  setCurrentUserRole('hr_admin');
-                  setCurrentPage('hr-docs');
-                  setShowProfileMenu(false);
-                }}
-              >
-                <span>Sarah (HR Admin)</span>
-              </button>
-              <button
-                style={{
-                  ...styles.menuItem,
-                  ...(currentUserRole === 'it_admin' ? styles.menuItemActive : {}),
-                }}
-                onClick={() => {
-                  setCurrentUserRole('it_admin');
-                  setCurrentPage('it-access');
-                  setShowProfileMenu(false);
-                }}
-              >
-                <span>David (IT Admin)</span>
-              </button>
-
-              <div style={styles.menuDivider} />
-
               <button
                 style={{ ...styles.menuItem, color: '#f87171' }}
                 onClick={() => {
-                  setCurrentPage('login');
+                  void signOut();
                   setShowProfileMenu(false);
                 }}
               >

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
+import { documentApi } from '../services/documentApi';
 import { X, Download, FileText, CheckCircle2, Share2, Shield, Calendar } from 'lucide-react';
 
 export const DocumentModal: React.FC = () => {
@@ -7,8 +8,19 @@ export const DocumentModal: React.FC = () => {
 
   if (!activeDocModal) return null;
 
-  const handleDownload = () => {
-    addToast(`Downloading ${activeDocModal.title} (${activeDocModal.fileSize})...`, 'info');
+  const handleDownload = async () => {
+    if (!localStorage.getItem('accessToken')) {
+      addToast(`Downloading ${activeDocModal.title} (${activeDocModal.fileSize})...`, 'info');
+      return;
+    }
+    try {
+      const document = await documentApi.get(activeDocModal.id);
+      if (!document.currentVersion) throw new Error('This document has no downloadable version');
+      await documentApi.download(activeDocModal.id, document.currentVersion.fileName);
+      addToast(`Downloaded ${activeDocModal.title}`, 'success');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Unable to download document', 'error');
+    }
   };
 
   return (
@@ -151,7 +163,7 @@ export const DocumentModal: React.FC = () => {
               <span>Share Link</span>
             </button>
 
-            <button onClick={handleDownload} className="btn-primary">
+            <button onClick={() => void handleDownload()} className="btn-primary">
               <Download size={15} />
               <span>Download PDF ({activeDocModal.fileSize})</span>
             </button>

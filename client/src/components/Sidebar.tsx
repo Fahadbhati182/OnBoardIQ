@@ -14,10 +14,11 @@ import {
   ShieldAlert,
   LogOut,
   FolderOpen,
+  PlusCircle,
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
-  const { currentPage, setCurrentPage, currentUserRole, setCurrentUserRole, currentUser } = useApp();
+  const { currentPage, setCurrentPage, currentUserRole, setCurrentUserRole, currentUser, signOut } = useApp();
 
   interface NavItem {
     id: PageType;
@@ -37,9 +38,10 @@ export const Sidebar: React.FC = () => {
 
   const hrNav: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: <Home size={18} /> },
-    { id: 'hr-docs', label: 'Documents', icon: <FolderOpen size={18} />, badge: '24' },
-    { id: 'tasks', label: 'Onboarding Content', icon: <CheckSquare size={18} /> },
-    { id: 'profile', label: 'Employees', icon: <Users size={18} /> },
+    { id: 'documents', label: 'Documents', icon: <FolderOpen size={18} />, badge: '24' },
+    { id: 'task-admin', label: 'Onboarding Content', icon: <CheckSquare size={18} /> },
+    { id: 'task-create', label: 'Create Task', icon: <PlusCircle size={18} /> },
+    { id: 'employees', label: 'Employees', icon: <Users size={18} /> },
     { id: 'company', label: 'Analytics', icon: <BarChart3 size={18} /> },
     { id: 'profile', label: 'Profile', icon: <User size={18} /> },
   ];
@@ -48,19 +50,13 @@ export const Sidebar: React.FC = () => {
     { id: 'dashboard', label: 'Dashboard', icon: <Home size={18} /> },
     { id: 'it-access', label: 'Access Requests', icon: <KeyRound size={18} />, badge: '2' },
     { id: 'documents', label: 'IT Setup Guides', icon: <FileText size={18} /> },
-    { id: 'profile', label: 'Employees', icon: <Users size={18} /> },
+    { id: 'employees', label: 'Employees', icon: <Users size={18} /> },
     { id: 'company', label: 'Analytics', icon: <ShieldAlert size={18} /> },
     { id: 'profile', label: 'Profile', icon: <User size={18} /> },
   ];
 
   const currentNavItems =
     currentUserRole === 'hr_admin' ? hrNav : currentUserRole === 'it_admin' ? itNav : employeeNav;
-
-  const cycleRole = () => {
-    const roles: UserRole[] = ['employee', 'hr_admin', 'it_admin'];
-    const nextIndex = (roles.indexOf(currentUserRole) + 1) % roles.length;
-    setCurrentUserRole(roles[nextIndex]);
-  };
 
   return (
     <aside style={styles.sidebar}>
@@ -74,7 +70,7 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Role Indicator Banner */}
-      <div style={styles.roleSwitcherBox} onClick={cycleRole} title="Click to switch persona">
+      <div style={styles.roleSwitcherBox}>
         <div style={styles.rolePill}>
           <span style={styles.roleDot} />
           <span style={styles.roleText}>
@@ -122,6 +118,7 @@ export const Sidebar: React.FC = () => {
       </nav>
 
       {/* Direct Portal Quick Links */}
+      {currentUserRole !== 'employee' && (
       <div style={styles.adminDirectLinks}>
         <div style={styles.navGroupTitle}>PORTALS</div>
         <button
@@ -151,6 +148,7 @@ export const Sidebar: React.FC = () => {
           <span>IT Access Portal</span>
         </button>
       </div>
+      )}
 
       {/* User Footer Profile */}
       <div style={styles.userFooter}>
@@ -162,7 +160,7 @@ export const Sidebar: React.FC = () => {
           <div style={styles.userRole}>{currentUser.jobTitle}</div>
         </div>
         <button
-          onClick={() => setCurrentPage('login')}
+          onClick={() => void signOut()}
           style={styles.logoutBtn}
           title="Sign Out / Switch Account"
         >

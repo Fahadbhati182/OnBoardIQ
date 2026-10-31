@@ -8,7 +8,7 @@ export async function requireAuth(req, _res, next) {
   const [scheme, token, ...extra] = authorization?.split(" ") ?? [];
 
   if (scheme !== "Bearer" || !token || extra.length > 0) {
-    return next(new ApiError(401, "A bearer access token is required"));
+    return next(new ApiError(401, "You are not allowed to access this resource"));
   }
 
   let claims;
@@ -16,7 +16,7 @@ export async function requireAuth(req, _res, next) {
     claims = verifyAccessToken(token);
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
-      return next(new ApiError(401, "Access token is invalid or expired"));
+      return next(new ApiError(401, "You are not allowed to access this resource"));
     }
     return next(error);
   }
@@ -26,7 +26,7 @@ export async function requireAuth(req, _res, next) {
     claims.type !== "access" ||
     typeof claims.sub !== "string"
   ) {
-    return next(new ApiError(401, "Access token is invalid"));
+    return next(new ApiError(401, "You are not allowed to access this resource"));
   }
 
   const { data: user, error } = await supabase
@@ -40,9 +40,27 @@ export async function requireAuth(req, _res, next) {
     return next(new ApiError(500, "An unexpected database error occurred"));
   }
   if (!user?.is_active) {
-    return next(new ApiError(401, "The account is unavailable"));
+    return next(new ApiError(401, "You are not allowed to access this resource"));
   }
 
   req.user = user;
   return next();
+}
+
+export function allowedRoles(allowedUser) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        message: "You are not allowed to access this resource",
+      });
+    }
+
+    if (!allowedUser.includes(req.user.role)) {
+      return res.status(403).json({
+        message: "You are not allowed to access this resource",
+      });
+    }
+
+    next();
+  };
 }

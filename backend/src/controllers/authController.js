@@ -67,7 +67,11 @@ function validateCredentials(name, email, password, requireName = false) {
     throw new ApiError(400, "Password must be between 8 and 72 bytes");
   }
 
-  return { normalizedEmail, password };
+  return {
+    name: typeof name === "string" ? name.trim() : undefined,
+    normalizedEmail,
+    password,
+  };
 }
 
 async function findUserByEmail(email) {
@@ -114,12 +118,11 @@ export async function register(req, res) {
     req.body?.password,
     true,
   );
-
   const passwordHash = await bcrypt.hash(password, 12);
   const { data: user, error } = await supabase
     .from("users")
     .insert({
-      name: name.trim(),
+      name,
       email: normalizedEmail,
       password_hash: passwordHash,
     })
@@ -282,5 +285,49 @@ export function getCurrentUser(req, res) {
   res.status(200).json({
     success: true,
     data: { user: toPublicUser(req.user) },
+  });
+}
+
+export async function listEmployees(req, res) {
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, name, email, role, department_id, is_active")
+    .eq("role", "EMPLOYEE")
+    .order("name", { ascending: true });
+
+  if (error) {
+    handleDatabaseError(error, "employee directory lookup");
+  }
+
+  res.status(200).json({
+    success: true,
+    data: (data || []).map((employee) => ({
+      id: employee.id,
+      name: employee.name,
+      email: employee.email,
+      role: employee.role,
+      departmentId: employee.department_id,
+      isActive: employee.is_active,
+    })),
+  });
+}
+
+export async function listDepartments(req, res) {
+  const { data, error } = await supabase
+    .from("departments")
+    .select("id, name, description")
+    .order("name", { ascending: true });
+
+  if (error) {
+    handleDatabaseError(error, "department directory lookup");
+  }
+
+  res.status(200).json({
+    success: true,
+    data: (data || []).map((department) => ({
+      id: department.id,
+      name: department.name,
+      description: department.description || "",
+    })),
   });
 }

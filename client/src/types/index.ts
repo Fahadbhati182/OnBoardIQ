@@ -3,13 +3,19 @@ export type PageType =
   | 'dashboard' 
   | 'chat' 
   | 'tasks' 
+  | 'task-admin'
+  | 'task-create'
   | 'documents' 
+  | 'document-upload'
   | 'profile' 
+  | 'employees'
   | 'hr-docs' 
   | 'it-access' 
   | 'company';
 
 export type UserRole = 'employee' | 'hr_admin' | 'it_admin';
+
+export type ThemeId = 'default' | 'veo-onyx' | 'midnight-azure' | 'ocean-blue' | 'brainwave-slate';
 
 export interface UserProfile {
   id: string;

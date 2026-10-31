@@ -14,6 +14,31 @@ import {
   Filter,
 } from 'lucide-react';
 
+/* ─── Skeleton table row ───────────────────────────────────────────── */
+const SkeletonRow: React.FC = () => (
+  <tr className="animate-pulse">
+    <td className="py-4 px-6">
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-full bg-emerald-900/40" />
+        <div>
+          <div className="h-3.5 bg-emerald-900/40 rounded w-32 mb-1.5" />
+          <div className="h-2.5 bg-emerald-900/25 rounded w-40" />
+        </div>
+      </div>
+    </td>
+    <td className="py-4 px-4"><div className="h-3.5 bg-emerald-900/30 rounded w-28" /></td>
+    <td className="py-4 px-4"><div className="h-3 bg-emerald-900/25 rounded w-48" /></td>
+    <td className="py-4 px-4"><div className="h-5 bg-emerald-900/30 rounded-full w-20" /></td>
+    <td className="py-4 px-4"><div className="h-3 bg-emerald-900/25 rounded w-24" /></td>
+    <td className="py-4 px-6 text-right">
+      <div className="flex justify-end gap-2">
+        <div className="w-7 h-7 bg-emerald-900/30 rounded-md" />
+        <div className="w-7 h-7 bg-emerald-900/30 rounded-md" />
+      </div>
+    </td>
+  </tr>
+);
+
 export const ITAdminAccessPage: React.FC = () => {
   const { accessRequests, updateAccessRequest, addToast } = useApp();
   const [activeTab, setActiveTab] = useState<'all' | AccessStatus>('all');

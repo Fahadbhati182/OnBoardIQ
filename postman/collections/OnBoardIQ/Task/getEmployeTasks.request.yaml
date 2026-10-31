@@ -1,0 +1,7 @@
+$kind: http-request
+description: ""
+url: http://localhost:3000/api/tasks/my-tasks
+method: GET
+headers:
+  Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0eXBlIjoiYWNjZXNzIiwicm9sZSI6IkVNUExPWUVFIiwiaWF0IjoxNzkzMjExODYxLCJleHAiOjE3OTMyMTI3NjEsImlzcyI6Im9uYm9hcmRpcS1hcGkiLCJzdWIiOiIxNWY5ZmE1Ni0xYjQ2LTQ2NTAtOGU4Zi01MTZjYjYzMmI5ZjEifQ.VWuTlUb7J05RiazO_MiS1iu3FuQPmCRqEVe9DX4rES0
+order: 1000

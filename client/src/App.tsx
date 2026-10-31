@@ -2,7 +2,6 @@ import React from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
-import { DemoSwitcher } from './components/DemoSwitcher';
 import { ToastContainer } from './components/ToastContainer';
 import { TaskModal } from './components/TaskModal';
 import { DocumentModal } from './components/DocumentModal';
@@ -14,20 +13,54 @@ import { AIAssistantPage } from './pages/AIAssistantPage';
 import { MyTasksPage } from './pages/MyTasksPage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { EmployeesPage } from './pages/EmployeesPage';
 import { HRAdminDocsPage } from './pages/HRAdminDocsPage';
 import { ITAdminAccessPage } from './pages/ITAdminAccessPage';
 import { CompanyInfoPage } from './pages/CompanyInfoPage';
+import { TaskManagementPage } from './pages/TaskManagementPage';
+import { TaskCreatePage } from './pages/TaskCreatePage';
+import { DocumentUploadPage } from './pages/DocumentUploadPage';
 
 const AppContent: React.FC = () => {
-  const { currentPage } = useApp();
+  const { currentPage, isInitializing, isAuthenticated, currentUserRole } = useApp();
+
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-[#06110d] text-slate-400 flex items-center justify-center">
+        <div className="flex items-center gap-3 text-sm">
+          <span className="w-5 h-5 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin" />
+          Loading your workspace…
+        </div>
+      </div>
+    );
+  }
 
   // Page 1: Login is a standalone full-bleed layout
-  if (currentPage === 'login') {
+  if (!isAuthenticated || currentPage === 'login') {
     return (
       <div className="relative min-h-screen bg-[#06110d]">
         <LoginPage />
-        <DemoSwitcher />
         <ToastContainer />
+      </div>
+    );
+  }
+
+  const allowedPages = currentUserRole === 'hr_admin'
+    ? ['dashboard', 'documents', 'hr-docs', 'task-admin', 'task-create', 'employees', 'profile', 'company', 'document-upload']
+    : currentUserRole === 'it_admin'
+    ? ['dashboard', 'it-access', 'documents', 'employees', 'profile', 'company']
+      : ['dashboard', 'chat', 'tasks', 'documents', 'profile', 'company'];
+  const isAllowed = allowedPages.includes(currentPage);
+
+  if (!isAllowed) {
+    return (
+      <div className="min-h-screen bg-[#06110d] text-slate-100 flex items-center justify-center">
+        <div className="glass-card p-8 text-center">
+          <h1 className="text-xl font-semibold">You are not allowed to access this resource</h1>
+          <button className="btn-primary mt-5" onClick={() => window.location.reload()}>
+            Return to your dashboard
+          </button>
+        </div>
       </div>
     );
   }
@@ -48,8 +81,12 @@ const AppContent: React.FC = () => {
           {currentPage === 'dashboard' && <DashboardPage />}
           {currentPage === 'chat' && <AIAssistantPage />}
           {currentPage === 'tasks' && <MyTasksPage />}
+          {currentPage === 'task-admin' && <TaskManagementPage />}
+          {currentPage === 'task-create' && <TaskCreatePage />}
           {currentPage === 'documents' && <DocumentsPage />}
+          {currentPage === 'document-upload' && <DocumentUploadPage />}
           {currentPage === 'profile' && <ProfilePage />}
+          {currentPage === 'employees' && <EmployeesPage />}
           {currentPage === 'hr-docs' && <HRAdminDocsPage />}
           {currentPage === 'it-access' && <ITAdminAccessPage />}
           {currentPage === 'company' && <CompanyInfoPage />}
@@ -63,8 +100,6 @@ const AppContent: React.FC = () => {
       {/* Toast Alert Feedback */}
       <ToastContainer />
 
-      {/* Floating Demo Bar to switch between all 9 pages */}
-      <DemoSwitcher />
     </div>
   );
 };

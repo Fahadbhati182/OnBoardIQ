@@ -1,0 +1,40 @@
+$kind: http-request
+url: http://localhost:3000/api/documents
+method: POST
+headers:
+  Authorization: "{{bearer_token_17oz}}"
+body:
+  type: formdata
+  content:
+    - type: file
+      key: file
+      src:
+        - /C:/Users/Fahad/Desktop/SMART INDIA HACKATHON 2025.pdf
+      description: ""
+      disabled: false
+    - type: text
+      key: title
+      value: "\tEmployee Handbook"
+      description: ""
+      disabled: false
+    - type: text
+      key: description
+      value: Company policies for new employees
+      description: ""
+      disabled: false
+    - type: text
+      key: documentType
+      value: "\tPOLICY"
+      description: ""
+      disabled: false
+    - type: text
+      key: departmentId
+      value: 823370f9-12f1-4bf7-afc7-f8148e8cd772
+      description: ""
+      disabled: false
+    - type: text
+      key: accessScope
+      value: "\tALL_EMPLOYEES"
+      description: ""
+      disabled: false
+order: 1000

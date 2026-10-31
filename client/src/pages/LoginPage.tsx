@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
-import { UserRole } from '../types';
+import React, { useState } from "react";
+import { useApp } from "../context/AppContext";
+import { authApi } from "../services/authApi";
 import {
   Compass,
   Sparkles,
@@ -9,52 +9,57 @@ import {
   Mail,
   Lock,
   Check,
-  ShieldCheck,
-} from 'lucide-react';
+  Palette,
+} from "lucide-react";
 
 export const LoginPage: React.FC = () => {
-  const { setCurrentPage, setCurrentUserRole, addToast } = useApp();
+  const { setCurrentPage, setAuthenticatedUser, addToast, theme, setTheme } = useApp();
 
-  const [email, setEmail] = useState('fahad@iss.com');
-  const [password, setPassword] = useState('••••••••••••');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("fahad@iss.com");
+  const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email.toLowerCase().includes('sarah') || email.toLowerCase().includes('hr')) {
-      setCurrentUserRole('hr_admin');
-    } else if (email.toLowerCase().includes('david') || email.toLowerCase().includes('it')) {
-      setCurrentUserRole('it_admin');
-    } else {
-      setCurrentUserRole('employee');
-    }
-    addToast('Welcome back! Signed in successfully', 'success');
-    setCurrentPage('dashboard');
-  };
-
-  const handleQuickLogin = (role: UserRole) => {
-    setCurrentUserRole(role);
-    if (role === 'employee') {
-      setEmail('fahad@iss.com');
-      addToast('Signed in as Fahad Bhati (Software Engineer)', 'success');
-      setCurrentPage('dashboard');
-    } else if (role === 'hr_admin') {
-      setEmail('sarah.jenkins@iss.com');
-      addToast('Signed in as Sarah Jenkins (HR Admin)', 'success');
-      setCurrentPage('hr-docs');
-    } else {
-      setEmail('david.miller@iss.com');
-      addToast('Signed in as David Miller (IT Admin)', 'success');
-      setCurrentPage('it-access');
+    try {
+      const { user, accessToken } = isRegistering
+        ? await authApi.register(name, email, password)
+        : await authApi.login(email, password);
+      localStorage.setItem("accessToken", accessToken);
+      setAuthenticatedUser(user);
+      setCurrentPage("dashboard");
+      addToast(
+        isRegistering
+          ? "Account created successfully"
+          : "Welcome back! Signed in successfully",
+        "success",
+      );
+    } catch (error) {
+      addToast(
+        error instanceof Error ? error.message : "Unable to sign in",
+        "error",
+      );
     }
   };
 
   return (
-    <div style={styles.loginContainer}>
+    <div className="login-theme-root" style={styles.loginContainer}>
+      <div className="login-theme-picker">
+        <Palette size={15} />
+        <select value={theme} onChange={(event) => setTheme(event.target.value as typeof theme)} aria-label="Color theme">
+          <option value="default">Forest Default</option>
+          <option value="veo-onyx">Veo Onyx</option>
+          <option value="midnight-azure">Midnight Azure</option>
+          <option value="ocean-blue">Ocean Blue</option>
+          <option value="brainwave-slate">Brainwave Slate</option>
+        </select>
+      </div>
       {/* Left Column: Hero Brand & Vision */}
-      <div style={styles.heroColumn}>
+      <div className="login-theme-hero" style={styles.heroColumn}>
         <div style={styles.heroOverlay} />
-        
+
         <div style={styles.heroContent}>
           {/* Logo */}
           <div style={styles.heroBrandRow}>
@@ -64,13 +69,15 @@ export const LoginPage: React.FC = () => {
           <div style={styles.heroMainBlock}>
             <div style={styles.heroTag}>— NEW JOINER EXPERIENCE</div>
             <h1 style={styles.heroHeading}>
-              People<br />
-              Build<br />
+              People
+              <br />
+              Build
+              <br />
               What's Next.
             </h1>
             <p style={styles.heroText}>
-              Your guide to a smooth start at ISS. Get answers, complete onboarding tasks, and access
-              everything you need — powered by AI.
+              Your guide to a smooth start at ISS. Get answers, complete
+              onboarding tasks, and access everything you need — powered by AI.
             </p>
           </div>
 
@@ -101,14 +108,35 @@ export const LoginPage: React.FC = () => {
       </div>
 
       {/* Right Column: Warm Champagne Login Card */}
-      <div style={styles.formColumn}>
-        <div style={styles.loginCard}>
+      <div className="login-theme-form" style={styles.formColumn}>
+        <div className="login-theme-card" style={styles.loginCard}>
           <div style={styles.cardHeader}>
-            <h2 style={styles.cardTitle}>Welcome Back</h2>
-            <p style={styles.cardSubtitle}>Sign in to continue to your journey</p>
+            <h2 style={styles.cardTitle}>
+              {isRegistering ? "Create Account" : "Welcome Back"}
+            </h2>
+            <p style={styles.cardSubtitle}>
+              {isRegistering
+                ? "Create your onboarding account"
+                : "Sign in to continue to your journey"}
+            </p>
           </div>
 
           <form onSubmit={handleLogin} style={styles.form}>
+            {isRegistering && (
+              <div style={styles.inputGroup}>
+                <label style={styles.inputLabel}>Full name</label>
+                <div style={styles.inputWrapper}>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Your full name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    style={styles.formInput}
+                  />
+                </div>
+              </div>
+            )}
             <div style={styles.inputGroup}>
               <label style={styles.inputLabel}>Email address</label>
               <div style={styles.inputWrapper}>
@@ -131,6 +159,8 @@ export const LoginPage: React.FC = () => {
                 <input
                   type="password"
                   required
+                  minLength={8}
+                  maxLength={72}
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -140,8 +170,16 @@ export const LoginPage: React.FC = () => {
             </div>
 
             <div style={styles.rememberRow}>
-              <label style={styles.checkboxLabel} onClick={() => setRememberMe(!rememberMe)}>
-                <div style={{ ...styles.checkbox, ...(rememberMe ? styles.checkboxChecked : {}) }}>
+              <label
+                style={styles.checkboxLabel}
+                onClick={() => setRememberMe(!rememberMe)}
+              >
+                <div
+                  style={{
+                    ...styles.checkbox,
+                    ...(rememberMe ? styles.checkboxChecked : {}),
+                  }}
+                >
                   {rememberMe && <Check size={12} color="#ffffff" />}
                 </div>
                 <span>Remember me</span>
@@ -150,7 +188,7 @@ export const LoginPage: React.FC = () => {
                 href="#forgot"
                 onClick={(e) => {
                   e.preventDefault();
-                  addToast('Password reset link sent to HR support', 'info');
+                  addToast("Password reset link sent to HR support", "info");
                 }}
                 style={styles.forgotLink}
               >
@@ -159,7 +197,7 @@ export const LoginPage: React.FC = () => {
             </div>
 
             <button type="submit" style={styles.submitBtn}>
-              <span>Sign In</span>
+              <span>{isRegistering ? "Create Account" : "Sign In"}</span>
               <ArrowRight size={16} />
             </button>
 
@@ -172,8 +210,8 @@ export const LoginPage: React.FC = () => {
             <button
               type="button"
               onClick={() => {
-                addToast('Google Single Sign-On authenticated', 'success');
-                setCurrentPage('dashboard');
+                addToast("Google Single Sign-On authenticated", "success");
+                setCurrentPage("dashboard");
               }}
               style={styles.googleBtn}
             >
@@ -199,24 +237,15 @@ export const LoginPage: React.FC = () => {
             </button>
           </form>
 
-          {/* Quick Demo Persona Switcher */}
-          <div style={styles.quickAccessSection}>
-            <div style={styles.quickAccessTitle}>
-              <ShieldCheck size={13} />
-              <span>TEST PERSONAS (1-CLICK LOGIN)</span>
-            </div>
-            <div style={styles.quickAccessButtons}>
-              <button onClick={() => handleQuickLogin('employee')} style={styles.personaBtn}>
-                👤 Fahad (Employee)
-              </button>
-              <button onClick={() => handleQuickLogin('hr_admin')} style={styles.personaBtn}>
-                📋 Sarah (HR Admin)
-              </button>
-              <button onClick={() => handleQuickLogin('it_admin')} style={styles.personaBtn}>
-                🔑 David (IT Admin)
-              </button>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={() => setIsRegistering((value) => !value)}
+            style={styles.forgotLink}
+          >
+            {isRegistering
+              ? "Already have an account? Sign in"
+              : "Need an account? Register"}
+          </button>
 
           <div style={styles.cardFooter}>
             <span>New to ISS? </span>
@@ -224,12 +253,33 @@ export const LoginPage: React.FC = () => {
               href="#contact"
               onClick={(e) => {
                 e.preventDefault();
-                addToast('Contact HR support at onboarding@iss.com', 'info');
+                addToast("Contact HR support at onboarding@iss.com", "info");
               }}
               style={styles.contactLink}
             >
               Contact your HR team.
             </a>
+          </div>
+          <div className="text-xl  space-y-1 border">
+            <button
+              onClick={() => {
+                setEmail("fahadbhati3600@gmail.com");
+                setPassword("123456789");
+              }}
+              className=" text-black font-body "
+            >
+              Add ADMIN Details
+            </button>
+            <hr />
+            <button
+              onClick={() => {
+                setEmail("anam@gmail.com");
+                setPassword("123456789");
+              }}
+              className=" text-black font-body "
+            >
+              Add EMPLOYEE Details
+            </button>
           </div>
         </div>
       </div>
@@ -239,289 +289,290 @@ export const LoginPage: React.FC = () => {
 
 const styles: Record<string, React.CSSProperties> = {
   loginContainer: {
-    display: 'flex',
-    minHeight: '100vh',
-    width: '100%',
-    backgroundColor: '#06110d',
+    display: "flex",
+    minHeight: "100vh",
+    width: "100%",
+    backgroundColor: "#06110d",
   },
   heroColumn: {
     flex: 1.25,
-    position: 'relative',
+    position: "relative",
     backgroundImage: `url(/assets/images/hero-bg.jpg)`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    padding: '48px 56px',
-    overflow: 'hidden',
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between",
+    padding: "48px 56px",
+    overflow: "hidden",
   },
   heroOverlay: {
-    position: 'absolute',
+    position: "absolute",
     inset: 0,
-    background: 'linear-gradient(135deg, rgba(6, 17, 13, 0.88) 0%, rgba(10, 29, 21, 0.72) 100%)',
+    background:
+      "linear-gradient(135deg, rgba(6, 17, 13, 0.88) 0%, rgba(10, 29, 21, 0.72) 100%)",
     zIndex: 1,
   },
   heroContent: {
-    position: 'relative',
+    position: "relative",
     zIndex: 2,
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    height: '100%',
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between",
+    height: "100%",
   },
   heroBrandRow: {
-    display: 'flex',
-    alignItems: 'center',
+    display: "flex",
+    alignItems: "center",
   },
   heroMainBlock: {
-    maxWidth: '560px',
-    margin: 'auto 0',
+    maxWidth: "560px",
+    margin: "auto 0",
   },
   heroTag: {
-    fontSize: '11px',
+    fontSize: "11px",
     fontWeight: 700,
-    letterSpacing: '0.15em',
-    color: '#e7d7be',
-    textTransform: 'uppercase',
-    marginBottom: '16px',
+    letterSpacing: "0.15em",
+    color: "#e7d7be",
+    textTransform: "uppercase",
+    marginBottom: "16px",
   },
   heroHeading: {
-    fontSize: '60px',
+    fontSize: "60px",
     fontWeight: 700,
     lineHeight: 1.05,
-    color: '#f8fafc',
-    letterSpacing: '-0.03em',
-    marginBottom: '20px',
+    color: "#f8fafc",
+    letterSpacing: "-0.03em",
+    marginBottom: "20px",
   },
   heroText: {
-    fontSize: '15px',
-    color: '#cbd5e1',
+    fontSize: "15px",
+    color: "#cbd5e1",
     lineHeight: 1.6,
-    maxWidth: '460px',
+    maxWidth: "460px",
   },
   heroPillsRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    flexWrap: 'wrap',
-    marginTop: '40px',
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    flexWrap: "wrap",
+    marginTop: "40px",
   },
   heroPill: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    background: 'rgba(12, 32, 23, 0.82)',
-    backdropFilter: 'blur(12px)',
-    border: '1px solid rgba(46, 125, 96, 0.35)',
-    padding: '8px 16px',
-    borderRadius: '9999px',
-    fontSize: '12px',
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    background: "rgba(12, 32, 23, 0.82)",
+    backdropFilter: "blur(12px)",
+    border: "1px solid rgba(46, 125, 96, 0.35)",
+    padding: "8px 16px",
+    borderRadius: "9999px",
+    fontSize: "12px",
     fontWeight: 500,
-    color: '#e2e8f0',
+    color: "#e2e8f0",
   },
   pillIconBox: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: '#e7d7be',
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#e7d7be",
   },
   formColumn: {
     flex: 1,
-    background: '#091913',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '40px 32px',
-    position: 'relative',
+    background: "#091913",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "40px 32px",
+    position: "relative",
     zIndex: 2,
   },
   loginCard: {
-    width: '100%',
-    maxWidth: '420px',
-    background: '#f8f4ec',
-    borderRadius: '24px',
-    padding: '40px 36px',
-    boxShadow: '0 24px 60px rgba(0, 0, 0, 0.55)',
-    color: '#13281f',
+    width: "100%",
+    maxWidth: "420px",
+    background: "#f8f4ec",
+    borderRadius: "24px",
+    padding: "40px 36px",
+    boxShadow: "0 24px 60px rgba(0, 0, 0, 0.55)",
+    color: "#13281f",
   },
   cardHeader: {
-    textAlign: 'center',
-    marginBottom: '28px',
+    textAlign: "center",
+    marginBottom: "28px",
   },
   cardTitle: {
-    fontSize: '24px',
+    fontSize: "24px",
     fontWeight: 700,
-    color: '#0d221a',
-    letterSpacing: '-0.02em',
+    color: "#0d221a",
+    letterSpacing: "-0.02em",
   },
   cardSubtitle: {
-    fontSize: '13px',
-    color: '#65786f',
-    marginTop: '4px',
+    fontSize: "13px",
+    color: "#65786f",
+    marginTop: "4px",
   },
   form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px',
+    display: "flex",
+    flexDirection: "column",
+    gap: "16px",
   },
   inputGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px',
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
   },
   inputLabel: {
-    fontSize: '12px',
+    fontSize: "12px",
     fontWeight: 600,
-    color: '#284135',
+    color: "#284135",
   },
   inputWrapper: {
-    position: 'relative',
-    display: 'flex',
-    alignItems: 'center',
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
   },
   fieldIcon: {
-    position: 'absolute',
-    left: '14px',
-    color: '#7b9186',
-    pointerEvents: 'none',
+    position: "absolute",
+    left: "14px",
+    color: "#7b9186",
+    pointerEvents: "none",
   },
   formInput: {
-    width: '100%',
-    height: '44px',
-    background: '#ffffff',
-    border: '1px solid #d5ded8',
-    borderRadius: '10px',
-    padding: '0 14px 0 40px',
-    fontSize: '13.5px',
-    color: '#0e241b',
-    outline: 'none',
-    transition: 'border-color 0.2s',
+    width: "100%",
+    height: "44px",
+    background: "#ffffff",
+    border: "1px solid #d5ded8",
+    borderRadius: "10px",
+    padding: "0 14px 0 40px",
+    fontSize: "13.5px",
+    color: "#0e241b",
+    outline: "none",
+    transition: "border-color 0.2s",
   },
   rememberRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    fontSize: '12px',
-    marginTop: '2px',
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    fontSize: "12px",
+    marginTop: "2px",
   },
   checkboxLabel: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    cursor: 'pointer',
-    color: '#3d564a',
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    cursor: "pointer",
+    color: "#3d564a",
   },
   checkbox: {
-    width: '16px',
-    height: '16px',
-    borderRadius: '4px',
-    border: '1.5px solid #8ba095',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'all 0.15s',
+    width: "16px",
+    height: "16px",
+    borderRadius: "4px",
+    border: "1.5px solid #8ba095",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "all 0.15s",
   },
   checkboxChecked: {
-    background: '#133628',
-    borderColor: '#133628',
+    background: "#133628",
+    borderColor: "#133628",
   },
   forgotLink: {
-    color: '#1a4f3a',
+    color: "#1a4f3a",
     fontWeight: 600,
-    textDecoration: 'none',
+    textDecoration: "none",
   },
   submitBtn: {
-    width: '100%',
-    height: '46px',
-    background: '#0e2c20',
-    color: '#ffffff',
-    border: 'none',
-    borderRadius: '10px',
-    fontSize: '14px',
+    width: "100%",
+    height: "46px",
+    background: "#0e2c20",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "10px",
+    fontSize: "14px",
     fontWeight: 600,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '8px',
-    cursor: 'pointer',
-    boxShadow: '0 6px 16px rgba(14, 44, 32, 0.3)',
-    marginTop: '6px',
-    transition: 'background 0.2s',
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "8px",
+    cursor: "pointer",
+    boxShadow: "0 6px 16px rgba(14, 44, 32, 0.3)",
+    marginTop: "6px",
+    transition: "background 0.2s",
   },
   dividerRow: {
-    display: 'flex',
-    alignItems: 'center',
-    margin: '10px 0',
+    display: "flex",
+    alignItems: "center",
+    margin: "10px 0",
   },
   dividerLine: {
     flex: 1,
-    height: '1px',
-    background: '#d6dfd9',
+    height: "1px",
+    background: "#d6dfd9",
   },
   dividerText: {
-    padding: '0 10px',
-    fontSize: '11px',
-    color: '#7b9186',
-    textTransform: 'uppercase',
+    padding: "0 10px",
+    fontSize: "11px",
+    color: "#7b9186",
+    textTransform: "uppercase",
   },
   googleBtn: {
-    width: '100%',
-    height: '44px',
-    background: '#ffffff',
-    border: '1px solid #d5ded8',
-    borderRadius: '10px',
-    fontSize: '13px',
+    width: "100%",
+    height: "44px",
+    background: "#ffffff",
+    border: "1px solid #d5ded8",
+    borderRadius: "10px",
+    fontSize: "13px",
     fontWeight: 600,
-    color: '#284135',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '10px',
-    cursor: 'pointer',
-    transition: 'background 0.15s',
+    color: "#284135",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "10px",
+    cursor: "pointer",
+    transition: "background 0.15s",
   },
   quickAccessSection: {
-    marginTop: '20px',
-    paddingTop: '16px',
-    borderTop: '1px dashed #d5ded8',
+    marginTop: "20px",
+    paddingTop: "16px",
+    borderTop: "1px dashed #d5ded8",
   },
   quickAccessTitle: {
-    fontSize: '10px',
+    fontSize: "10px",
     fontWeight: 700,
-    letterSpacing: '0.08em',
-    color: '#557063',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '5px',
-    marginBottom: '8px',
+    letterSpacing: "0.08em",
+    color: "#557063",
+    display: "flex",
+    alignItems: "center",
+    gap: "5px",
+    marginBottom: "8px",
   },
   quickAccessButtons: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '6px',
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
   },
   personaBtn: {
-    background: '#edf3ef',
-    border: '1px solid #c8d7cf',
-    borderRadius: '6px',
-    padding: '6px 10px',
-    fontSize: '11.5px',
-    color: '#133628',
+    background: "#edf3ef",
+    border: "1px solid #c8d7cf",
+    borderRadius: "6px",
+    padding: "6px 10px",
+    fontSize: "11.5px",
+    color: "#133628",
     fontWeight: 600,
-    cursor: 'pointer',
-    textAlign: 'left',
-    transition: 'all 0.15s',
+    cursor: "pointer",
+    textAlign: "left",
+    transition: "all 0.15s",
   },
   cardFooter: {
-    textAlign: 'center',
-    fontSize: '12px',
-    color: '#65786f',
-    marginTop: '18px',
+    textAlign: "center",
+    fontSize: "12px",
+    color: "#65786f",
+    marginTop: "18px",
   },
   contactLink: {
-    color: '#12392b',
+    color: "#12392b",
     fontWeight: 600,
-    textDecoration: 'none',
+    textDecoration: "none",
   },
 };

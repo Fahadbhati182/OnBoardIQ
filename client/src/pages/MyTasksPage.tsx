@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { TaskStatus, TaskItem } from '../types';
+import { AssignedTask, taskApi } from '../services/taskApi';
 import {
   Clock,
   CheckCircle2,
@@ -12,10 +13,35 @@ import {
 } from 'lucide-react';
 
 export const MyTasksPage: React.FC = () => {
-  const { tasks, setActiveTaskModal } = useApp();
+  const { tasks: demoTasks, setActiveTaskModal, addToast } = useApp();
+  const [apiTasks, setApiTasks] = useState<AssignedTask[] | null>(null);
+  const [loadError, setLoadError] = useState('');
+  const [loading, setLoading] = useState(!!localStorage.getItem('accessToken'));
+  const [updatingAssignmentId, setUpdatingAssignmentId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<'all' | TaskStatus>('all');
   const [taskSearch, setTaskSearch] = useState('');
 
+  useEffect(() => {
+    if (!localStorage.getItem('accessToken')) { setLoading(false); return; }
+    setLoading(true);
+    taskApi.getMyTasks()
+      .then(setApiTasks)
+      .catch((error: unknown) => setLoadError(error instanceof Error ? error.message : 'Unable to load tasks'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const tasks = apiTasks
+    ? apiTasks.map((task) => ({
+        ...task,
+        id: task.assignmentId,
+        timeEstimate: `${task.estimatedMinutes} min`,
+        status: task.status.toLowerCase() as TaskStatus,
+        thumbnailUrl: '',
+        category: 'Orientation' as const,
+        checklist: [],
+        instructions: task.description || '',
+      }))
+    : demoTasks;
   const completedCount = tasks.filter((t) => t.status === 'completed').length;
   const inProgressCount = tasks.filter((t) => t.status === 'in_progress').length;
   const pendingCount = tasks.filter((t) => t.status === 'not_started').length;
@@ -26,9 +52,26 @@ export const MyTasksPage: React.FC = () => {
     const matchesFilter = activeFilter === 'all' || task.status === activeFilter;
     const matchesSearch =
       task.title.toLowerCase().includes(taskSearch.toLowerCase()) ||
-      task.description.toLowerCase().includes(taskSearch.toLowerCase());
+      (task.description || '').toLowerCase().includes(taskSearch.toLowerCase());
     return matchesFilter && matchesSearch;
   });
+
+  const updateApiTask = async (task: AssignedTask) => {
+    setUpdatingAssignmentId(task.assignmentId);
+    try {
+      const updated = task.status === 'NOT_STARTED'
+        ? await taskApi.startTask(task.assignmentId)
+        : await taskApi.completeTask(task.assignmentId);
+      setApiTasks((current) => current?.map((item) =>
+        item.assignmentId === updated.assignmentId ? updated : item
+      ) || null);
+      addToast(updated.status === 'COMPLETED' ? 'Task completed' : 'Task started', 'success');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Unable to update task', 'error');
+    } finally {
+      setUpdatingAssignmentId(null);
+    }
+  };
 
   return (
     <div className="page-container">
@@ -114,8 +157,25 @@ export const MyTasksPage: React.FC = () => {
       </div>
 
       {/* Tasks List */}
+      {loadError && <p style={{ color: '#f87171', marginBottom: '16px' }}>{loadError}</p>}
       <div style={styles.taskListContainer}>
-        {filteredTasks.length === 0 ? (
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div
+              key={i}
+              className="glass-card animate-pulse"
+              style={{ display: 'flex', alignItems: 'center', padding: '14px 20px', gap: '18px' }}
+            >
+              <div style={{ width: '68px', height: '52px', borderRadius: '10px', background: 'rgba(14,46,34,0.5)', flexShrink: 0 }} />
+              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(14,46,34,0.5)', flexShrink: 0 }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ height: '14px', background: 'rgba(14,46,34,0.5)', borderRadius: '6px', width: '55%', marginBottom: '8px' }} />
+                <div style={{ height: '11px', background: 'rgba(14,46,34,0.4)', borderRadius: '6px', width: '75%' }} />
+              </div>
+              <div style={{ height: '24px', width: '90px', background: 'rgba(14,46,34,0.5)', borderRadius: '9999px', flexShrink: 0 }} />
+            </div>
+          ))
+        ) : filteredTasks.length === 0 ? (
           <div style={styles.emptyState}>
             <p style={{ color: '#8da498', fontSize: '14px' }}>No tasks found in this category.</p>
           </div>
@@ -124,10 +184,12 @@ export const MyTasksPage: React.FC = () => {
             const isCompleted = task.status === 'completed';
             const isInProgress = task.status === 'in_progress';
 
+            const apiTask = apiTasks?.find((item) => item.assignmentId === task.id);
+            const demoTask = demoTasks.find((item) => item.id === task.id);
             return (
               <div
                 key={task.id}
-                onClick={() => setActiveTaskModal(task)}
+                onClick={() => demoTask && setActiveTaskModal(demoTask)}
                 className="glass-card"
                 style={styles.taskItemCard}
               >
@@ -176,6 +238,21 @@ export const MyTasksPage: React.FC = () => {
                   >
                     {isCompleted ? 'Completed' : isInProgress ? 'In Progress' : 'Not Started'}
                   </span>
+                  {apiTask && apiTask.status !== 'COMPLETED' && (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void updateApiTask(apiTask);
+                      }}
+                      disabled={updatingAssignmentId === apiTask.assignmentId}
+                      style={styles.actionButton}
+                    >
+                      {updatingAssignmentId === apiTask.assignmentId
+                        ? 'Updating…'
+                        : apiTask.status === 'NOT_STARTED' ? 'Start Task' : 'Complete'}
+                    </button>
+                  )}
 
                   <ChevronRight size={18} style={{ color: '#64748b' }} />
                 </div>
@@ -355,6 +432,15 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '6px',
     color: '#94a3b8',
     fontSize: '12px',
+  },
+  actionButton: {
+    border: '1px solid rgba(74, 222, 128, 0.4)',
+    borderRadius: '6px',
+    background: 'rgba(34, 197, 94, 0.12)',
+    color: '#86efac',
+    padding: '6px 9px',
+    fontSize: '11px',
+    cursor: 'pointer',
   },
   emptyState: {
     padding: '40px',

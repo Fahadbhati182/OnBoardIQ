@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { X, UploadCloud, FileText, Check } from 'lucide-react';
 import { DocumentCategory, DocumentStatus } from '../types';
+import { documentApi } from '../services/documentApi';
 
 interface UploadDocModalProps {
   isOpen: boolean;
@@ -9,7 +10,7 @@ interface UploadDocModalProps {
 }
 
 export const UploadDocModal: React.FC<UploadDocModalProps> = ({ isOpen, onClose }) => {
-  const { addDocument } = useApp();
+  const { addToast } = useApp();
 
   const [title, setTitle] = useState('');
   const [type, setType] = useState('Policy');
@@ -18,32 +19,29 @@ export const UploadDocModal: React.FC<UploadDocModalProps> = ({ isOpen, onClose 
   const [version, setVersion] = useState('v1.0');
   const [status, setStatus] = useState<DocumentStatus>('published');
   const [summary, setSummary] = useState('');
-  const [fileName, setFileName] = useState('');
+  const [file, setFile] = useState<File | null>(null);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
-
-    addDocument({
-      title,
-      type,
-      category,
-      department,
-      version,
-      status,
-      fileSize: '2.1 MB',
-      summary: summary || 'Comprehensive organizational documentation detailing policies and guidelines.',
-      keyPoints: [
-        'Mandatory compliance for all full-time and contractual employees',
-        'Subject to annual audit and executive reviews',
-        'Accessible via the ISS knowledge repository',
-      ],
-      coverGradient: 'linear-gradient(135deg, #13392a 0%, #205c43 100%)',
-    });
-
-    onClose();
+    if (!title.trim() || !file) {
+      addToast('A title and PDF file are required', 'error');
+      return;
+    }
+    try {
+      await documentApi.upload({
+        file,
+        title,
+        description: summary,
+        documentType: type.toUpperCase(),
+        accessScope: 'ALL_EMPLOYEES',
+      });
+      addToast('Document uploaded as a draft', 'success');
+      onClose();
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Unable to upload document', 'error');
+    }
   };
 
   return (
@@ -187,21 +185,21 @@ export const UploadDocModal: React.FC<UploadDocModalProps> = ({ isOpen, onClose 
 
           {/* Simulated File Dropzone */}
           <div
-            onClick={() => setFileName('ISS_Policy_Document_Final.pdf')}
             style={{
               border: '2px dashed rgba(46, 125, 96, 0.4)',
               borderRadius: '12px',
               padding: '20px',
               textAlign: 'center',
               cursor: 'pointer',
-              background: fileName ? 'rgba(34, 197, 94, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+              background: file ? 'rgba(34, 197, 94, 0.08)' : 'rgba(255, 255, 255, 0.02)',
               transition: 'all 0.2s',
             }}
           >
-            <FileText size={28} color={fileName ? '#4ade80' : '#8da498'} style={{ margin: '0 auto 8px' }} />
-            {fileName ? (
+            <FileText size={28} color={file ? '#4ade80' : '#8da498'} style={{ margin: '0 auto 8px' }} />
+            <input type="file" accept="application/pdf,.pdf" onChange={(event) => setFile(event.target.files?.[0] || null)} />
+            {file ? (
               <p style={{ fontSize: '13px', color: '#4ade80', fontWeight: 600 }}>
-                ✓ {fileName} attached (2.1 MB)
+                ✓ {file.name} attached
               </p>
             ) : (
               <div>
