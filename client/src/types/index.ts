@@ -13,7 +13,7 @@ export type PageType =
   | 'it-access' 
   | 'company';
 
-export type UserRole = 'employee' | 'hr_admin' | 'it_admin';
+export type UserRole = 'employee' | 'engineer' | 'engineering_admin' | 'hr_admin' | 'it_admin';
 
 export type ThemeId = 'default' | 'veo-onyx' | 'midnight-azure' | 'ocean-blue' | 'brainwave-slate';
 

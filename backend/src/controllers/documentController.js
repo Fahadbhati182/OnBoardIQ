@@ -12,12 +12,15 @@ import {
 import {
   canManageDocument,
   canViewDocument,
+  DOCUMENT_ACCESS_SCOPES,
+  DOCUMENT_STATUSES,
+  DOCUMENT_TYPES,
   isAdministrator,
 } from "../services/documentAuthorization.js";
 import { sendKafkaMessage } from "../config/kafka.js";
 
 const DOCUMENT_COLUMNS =
-  "id, title, description, document_type, status, department_id, access_scope, uploaded_by, created_at, updated_at";
+  "id, title, description, document_type, status, department_id, team_id, access_scope, uploaded_by, created_at, updated_at";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -44,14 +47,35 @@ function parseMetadata(body, partial = false) {
     values.description = body.description
       ? text(body.description, "description")
       : null;
-  if (!partial || body.documentType !== undefined)
+  if (!partial || body.documentType !== undefined) {
     values.document_type = text(body.documentType, "documentType", true);
+    if (!DOCUMENT_TYPES.includes(values.document_type)) {
+      throw new ApiError(400, "Invalid documentType");
+    }
+  }
+  if (!partial || body.accessScope !== undefined) {
+    values.access_scope = text(body.accessScope, "accessScope", true);
+    if (!DOCUMENT_ACCESS_SCOPES.includes(values.access_scope)) {
+      throw new ApiError(400, "Invalid accessScope");
+    }
+  }
+  if (!partial || body.teamId !== undefined)
+    values.team_id = body.teamId ? uuid(body.teamId, "teamId") : null;
   if (!partial || body.departmentId !== undefined)
     values.department_id = body.departmentId
       ? uuid(body.departmentId, "departmentId")
       : null;
-  if (!partial || body.accessScope !== undefined)
-    values.access_scope = text(body.accessScope, "accessScope", true);
+  if (
+    values.access_scope &&
+    values.access_scope !== "TEAM_ONLY" &&
+    values.team_id !== undefined &&
+    values.team_id !== null
+  ) {
+    throw new ApiError(400, "Only TEAM_ONLY documents may have a teamId");
+  }
+  if (values.access_scope === "TEAM_ONLY" && values.team_id === null) {
+    throw new ApiError(400, "TEAM_ONLY documents require a teamId");
+  }
   return values;
 }
 
@@ -63,6 +87,7 @@ function mapDocument(document, version) {
     documentType: document.document_type,
     status: document.status,
     departmentId: document.department_id,
+    teamId: document.team_id,
     accessScope: document.access_scope,
     uploadedBy: document.uploaded_by,
     createdAt: document.created_at,
@@ -91,15 +116,6 @@ async function findDocument(id) {
   return data;
 }
 
-async function getPermissions(documentId) {
-  const { data, error } = await supabase
-    .from("document_permissions")
-    .select("user_id, role, department_id, can_view")
-    .eq("document_id", documentId);
-  if (error) throw new ApiError(500, "An unexpected database error occurred");
-  return data || [];
-}
-
 async function latestVersion(documentId) {
   const { data, error } = await supabase
     .from("document_versions")
@@ -115,11 +131,11 @@ async function latestVersion(documentId) {
 }
 
 async function authorize(user, document, operation = "view") {
-  if (
+  const allowed =
     operation === "manage"
-      ? !canManageDocument(user, document)
-      : !canViewDocument(user, document, await getPermissions(document.id))
-  ) {
+      ? canManageDocument(user, document)
+      : canViewDocument(user, document);
+  if (!allowed) {
     throw new ApiError(403, "You are not allowed to access this resource");
   }
 }
@@ -138,6 +154,54 @@ function validateUpload(file) {
     throw new ApiError(413, "The uploaded file is too large");
 }
 
+export async function publishDocumentEvent(document, version) {
+  let teamData = null;
+
+  if (document.team_id != null) {
+    const { data, error } = await supabase
+      .from("teams")
+      .select("id, name")
+      .eq("id", document.team_id)
+      .single();
+
+    if (error || !data) {
+      throw new Error(`Failed to fetch team data: ${error?.message}`);
+    }
+
+    teamData = data;
+  }
+
+  await sendKafkaMessage("document.uploaded", {
+    documentId: document.id,
+    versionId: version.id,
+
+    // File information
+    storageKey: version.storage_path,
+    fileName: version.file_name,
+    mimeType: version.mime_type,
+    fileSize: version.file_size_bytes,
+
+    // Document information
+    title: document.title,
+    description: document.description,
+    documentType: document.document_type,
+
+    // Authorization metadata
+    accessScope: document.access_scope,
+    teamId: document.team_id ?? null,
+    teamName: teamData?.name ?? null,
+    status: document.status,
+
+    // Ownership and versioning
+    uploadedBy: document.uploaded_by,
+    versionNumber: version.version_number,
+
+    // Event information
+    eventType: "DOCUMENT_UPLOADED",
+    createdAt: new Date().toISOString(),
+  });
+}
+
 export async function listDocuments(req, res) {
   let query = supabase
     .from("documents")
@@ -146,43 +210,41 @@ export async function listDocuments(req, res) {
   if (!isAdministrator(req.user)) query = query.eq("status", "PUBLISHED");
   if (req.query.search)
     query = query.ilike("title", `%${text(req.query.search, "search")}%`);
-  if (req.query.departmentId)
-    query = query.eq(
-      "department_id",
-      uuid(req.query.departmentId, "departmentId"),
-    );
-  if (req.query.documentType)
-    query = query.eq(
-      "document_type",
-      text(req.query.documentType, "documentType"),
-    );
-  if (req.query.status && isAdministrator(req.user))
-    query = query.eq("status", text(req.query.status, "status"));
+  if (req.query.documentType) {
+    const documentType = text(req.query.documentType, "documentType");
+    if (!DOCUMENT_TYPES.includes(documentType)) {
+      throw new ApiError(400, "Invalid documentType");
+    }
+    query = query.eq("document_type", documentType);
+  }
+  if (req.query.status && isAdministrator(req.user)) {
+    const status = text(req.query.status, "status");
+    if (!DOCUMENT_STATUSES.includes(status))
+      throw new ApiError(400, "Invalid status");
+    query = query.eq("status", status);
+  }
   const page = Math.max(1, Number.parseInt(req.query.page || "1", 10));
   const limit = Math.min(
     100,
     Math.max(1, Number.parseInt(req.query.limit || "20", 10)),
   );
-  query = query.range((page - 1) * limit, page * limit - 1);
-  const { data, error, count } = await query;
+  const { data, error } = await query;
   if (error) throw new ApiError(500, "An unexpected database error occurred");
   const permitted = [];
   for (const document of data || []) {
     if (
-      (await canViewDocument(
-        req.user,
-        document,
-        await getPermissions(document.id),
-      )) ||
+      canViewDocument(req.user, document) ||
       canManageDocument(req.user, document)
     ) {
       permitted.push(mapDocument(document, await latestVersion(document.id)));
     }
   }
+  const total = permitted.length;
+  const paged = permitted.slice((page - 1) * limit, page * limit);
   res.json({
     success: true,
-    data: permitted,
-    pagination: { page, limit, total: count || 0 },
+    data: paged,
+    pagination: { page, limit, total },
   });
 }
 
@@ -202,6 +264,7 @@ export async function getDocument(req, res) {
 export async function uploadDocument(req, res) {
   validateUpload(req.file);
   const metadata = parseMetadata(req.body || {});
+
   const stored = await savePdf(req.file.buffer).catch((error) => {
     throw new ApiError(400, error.message);
   });
@@ -232,16 +295,16 @@ export async function uploadDocument(req, res) {
 
     if (versionError) throw versionError;
 
-    // send to queue for rag ingesiton pipeline
-    await sendKafkaMessage("document.uploaded", {
-      documentId: document.id,
-      versionId: version.id,
-      storageKey: stored.storageKey,
-      fileName: req.file.originalname,
-      mimeType: "application/pdf",
+    console.log(document, {
+      ...version,
+      storage_path: stored.storageKey,
     });
 
-    console.log("Send kafka message");
+    // return
+    await publishDocumentEvent(document, {
+      ...version,
+      storage_path: stored.storageKey,
+    });
 
     res
       .status(201)
@@ -259,6 +322,15 @@ export async function updateDocument(req, res) {
   const values = parseMetadata(req.body || {}, true);
   if (!Object.keys(values).length)
     throw new ApiError(400, "At least one document field is required");
+  const nextScope = values.access_scope ?? document.access_scope;
+  const nextTeamId =
+    values.team_id !== undefined ? values.team_id : document.team_id;
+  if (nextScope === "TEAM_ONLY" && nextTeamId === null) {
+    throw new ApiError(400, "TEAM_ONLY documents require a teamId");
+  }
+  if (nextScope !== "TEAM_ONLY" && nextTeamId !== null) {
+    throw new ApiError(400, "Only TEAM_ONLY documents may have a teamId");
+  }
   values.updated_at = new Date().toISOString();
   const { data, error } = await supabase
     .from("documents")
@@ -267,9 +339,11 @@ export async function updateDocument(req, res) {
     .select(DOCUMENT_COLUMNS)
     .single();
   if (error) throw new ApiError(500, "An unexpected database error occurred");
+  const version = await latestVersion(data.id);
+  if (version) await publishDocumentEvent(data, version);
   res.json({
     success: true,
-    data: mapDocument(data, await latestVersion(data.id)),
+    data: mapDocument(data, version),
   });
 }
 
@@ -283,9 +357,11 @@ export async function archiveDocument(req, res) {
     .select(DOCUMENT_COLUMNS)
     .single();
   if (error) throw new ApiError(500, "An unexpected database error occurred");
+  const version = await latestVersion(data.id);
+  if (version) await publishDocumentEvent(data, version);
   res.json({
     success: true,
-    data: mapDocument(data, await latestVersion(data.id)),
+    data: mapDocument(data, version),
   });
 }
 
@@ -301,9 +377,11 @@ export async function publishDocument(req, res) {
     .select(DOCUMENT_COLUMNS)
     .single();
   if (error) throw new ApiError(500, "An unexpected database error occurred");
+  const version = await latestVersion(data.id);
+  if (version) await publishDocumentEvent(data, version);
   res.json({
     success: true,
-    data: mapDocument(data, await latestVersion(data.id)),
+    data: mapDocument(data, version),
   });
 }
 
@@ -347,10 +425,15 @@ export async function uploadVersion(req, res) {
       )
       .single();
     if (error) throw error;
-    await supabase
+    const { error: updateError } = await supabase
       .from("documents")
       .update({ updated_at: new Date().toISOString() })
       .eq("id", document.id);
+    if (updateError) throw new ApiError(500, "Document metadata update failed");
+    await publishDocumentEvent(document, {
+      ...data,
+      storage_path: stored.storageKey,
+    });
     res.status(201).json({ success: true, data });
   } catch (error) {
     await removePdf(stored.storageKey).catch(() => {});

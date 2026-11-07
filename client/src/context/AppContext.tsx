@@ -8,7 +8,6 @@ import {
   DocumentItem,
   AccessRequestItem,
   AccessStatus,
-  ChatMessage,
   ToastNotification,
   ThemeId,
 } from "../types";
@@ -17,8 +16,6 @@ import {
   initialTasks,
   initialDocuments,
   initialAccessRequests,
-  initialChatMessages,
-  aiKnowledgeBase,
 } from "../data/mockData";
 import { authApi, AuthUser } from "../services/authApi";
 import { documentApi } from "../services/documentApi";
@@ -49,9 +46,6 @@ interface AppContextType {
   deleteDocument: (docId: string) => void;
   accessRequests: AccessRequestItem[];
   updateAccessRequest: (requestId: string, status: AccessStatus) => void;
-  chatMessages: ChatMessage[];
-  sendChatMessage: (text: string) => void;
-  clearChat: () => void;
   toasts: ToastNotification[];
   addToast: (message: string, type?: ToastNotification["type"]) => void;
   removeToast: (id: string) => void;
@@ -84,15 +78,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [accessRequests, setAccessRequests] = useState<AccessRequestItem[]>(
     initialAccessRequests,
   );
-  const [chatMessages, setChatMessages] =
-    useState<ChatMessage[]>(initialChatMessages);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [theme, setThemeState] = useState<ThemeId>(() => {
     const storedTheme = localStorage.getItem("onboardiq-theme");
-    return storedTheme === "default" || storedTheme === "veo-onyx" || storedTheme === "midnight-azure"
-      || storedTheme === "ocean-blue" || storedTheme === "brainwave-slate"
-      ? storedTheme as ThemeId
+    return storedTheme === "default" ||
+      storedTheme === "veo-onyx" ||
+      storedTheme === "midnight-azure" ||
+      storedTheme === "ocean-blue" ||
+      storedTheme === "brainwave-slate"
+      ? (storedTheme as ThemeId)
       : "default";
   });
   const [activeTaskModal, setActiveTaskModal] = useState<TaskItem | null>(null);
@@ -167,38 +162,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
 
     setDocuments([]);
     setTasks([]);
-    documentApi.list()
-      .then((items) => setDocuments(items.map((item) => ({
-        id: item.id,
-        title: item.title,
-        type: item.documentType,
-        category: "General",
-        department: item.departmentId || "Company",
-        version: item.currentVersion ? `v${item.currentVersion.versionNumber}` : "Draft",
-        status: item.status === "PUBLISHED" ? "published" : "draft",
-        updatedAt: new Date(item.updatedAt).toLocaleDateString(),
-        fileSize: item.currentVersion
-          ? `${Math.round(item.currentVersion.fileSizeBytes / 1024)} KB`
-          : "Unavailable",
-        summary: item.description || "",
-        keyPoints: [],
-        coverGradient: "linear-gradient(135deg, #163d2b, #0d221a)",
-      }))))
+    documentApi
+      .list()
+      .then((items) =>
+        setDocuments(
+          items.map((item) => ({
+            id: item.id,
+            title: item.title,
+            type: item.documentType,
+            category: "General",
+            department: item.departmentId || "Company",
+            version: item.currentVersion
+              ? `v${item.currentVersion.versionNumber}`
+              : "Draft",
+            status: item.status === "PUBLISHED" ? "published" : "draft",
+            updatedAt: new Date(item.updatedAt).toLocaleDateString(),
+            fileSize: item.currentVersion
+              ? `${Math.round(item.currentVersion.fileSizeBytes / 1024)} KB`
+              : "Unavailable",
+            summary: item.description || "",
+            keyPoints: [],
+            coverGradient: "linear-gradient(135deg, #163d2b, #0d221a)",
+          })),
+        ),
+      )
       .catch(() => setDocuments([]));
 
-    if (currentUserRole !== "employee") return;
-    taskApi.getMyTasks()
-      .then((items) => setTasks(items.map((item) => ({
-        id: item.assignmentId,
-        title: item.title,
-        description: item.description || "",
-        timeEstimate: `${item.estimatedMinutes} min`,
-        status: item.status.toLowerCase() as TaskStatus,
-        category: "Orientation",
-        thumbnailUrl: "",
-        checklist: [],
-        instructions: item.description || "",
-      }))))
+    if (!["employee", "engineer"].includes(currentUserRole)) return;
+    taskApi
+      .getMyTasks()
+      .then((items) =>
+        setTasks(
+          items.map((item) => ({
+            id: item.assignmentId,
+            title: item.title,
+            description: item.description || "",
+            timeEstimate: `${item.estimatedMinutes} min`,
+            status: item.status.toLowerCase() as TaskStatus,
+            category: "Orientation",
+            thumbnailUrl: "",
+            checklist: [],
+            instructions: item.description || "",
+          })),
+        ),
+      )
       .catch(() => setTasks([]));
   }, [currentUserRole, isAuthenticated]);
 
@@ -350,110 +357,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     );
   };
 
-  const sendChatMessage = (text: string) => {
-    if (!text.trim()) return;
-
-    const userMsg: ChatMessage = {
-      id: `user-${Date.now()}`,
-      sender: "user",
-      text,
-      timestamp: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
-
-    setChatMessages((prev) => [...prev, userMsg]);
-
-    // Simulated AI response
-    setTimeout(() => {
-      const lower = text.toLowerCase();
-      let replyText = `Thank you for your question! As ISS AI Assistant, I'm here to help you navigate policies, IT setup, and onboarding.`;
-      let attachment = undefined;
-
-      if (
-        lower.includes("parental") ||
-        lower.includes("maternity") ||
-        lower.includes("paternity") ||
-        lower.includes("leave")
-      ) {
-        replyText = `According to the ISS Parental Leave Policy (v2.1), eligible employees can avail:
-
-• Maternity Leave: 26 weeks (paid)
-• Paternity Leave: 4 weeks (paid)
-• Adoption Leave: 12 weeks (paid)
-
-You can find the detailed policy here:`;
-        attachment = {
-          title: "Parental Leave Policy v2.1",
-          version: "v2.1",
-          fileSize: "1.2 MB",
-          fileType: "PDF",
-        };
-      } else if (
-        lower.includes("eligible") ||
-        lower.includes("tenure") ||
-        lower.includes("qualify")
-      ) {
-        replyText = aiKnowledgeBase.eligible;
-      } else if (lower.includes("apply") || lower.includes("how to")) {
-        replyText = aiKnowledgeBase.apply;
-      } else if (
-        lower.includes("country") ||
-        lower.includes("region") ||
-        lower.includes("uk") ||
-        lower.includes("us")
-      ) {
-        replyText = aiKnowledgeBase.country;
-      } else if (
-        lower.includes("it") ||
-        lower.includes("laptop") ||
-        lower.includes("account") ||
-        lower.includes("yubikey")
-      ) {
-        replyText = aiKnowledgeBase.it;
-        attachment = {
-          title: "IT Security Guidelines v1.5",
-          version: "v1.5",
-          fileSize: "3.1 MB",
-          fileType: "PDF",
-        };
-      } else if (
-        lower.includes("health") ||
-        lower.includes("insurance") ||
-        lower.includes("benefit")
-      ) {
-        replyText = aiKnowledgeBase.health;
-        attachment = {
-          title: "Benefits Overview v1.0",
-          version: "v1.0",
-          fileSize: "2.4 MB",
-          fileType: "PDF",
-        };
-      } else {
-        replyText = `Here is information regarding your query on "${text}". You can access all related guides in Company Resources, or reach out to the People Operations team via HR Connect.`;
-      }
-
-      const aiMsg: ChatMessage = {
-        id: `ai-${Date.now()}`,
-        sender: "ai",
-        text: replyText,
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        documentAttachment: attachment,
-      };
-
-      setChatMessages((prev) => [...prev, aiMsg]);
-    }, 600);
-  };
-
-  const clearChat = () => {
-    setChatMessages([]);
-    addToast("Chat thread cleared", "info");
-  };
-
   const markAllNotificationsRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     addToast("All notifications marked as read", "info");
@@ -481,9 +384,6 @@ You can find the detailed policy here:`;
         deleteDocument,
         accessRequests,
         updateAccessRequest,
-        chatMessages,
-        sendChatMessage,
-        clearChat,
         toasts,
         addToast,
         removeToast,

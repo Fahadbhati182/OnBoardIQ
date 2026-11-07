@@ -1,5 +1,7 @@
 import { API_URL, apiRequest } from "./apiClient";
 
+export type AccessScope = "ALL_EMPLOYEES" | "TEAM_ONLY" | "ADMIN_ONLY";
+
 export interface ApiDocument {
   id: string;
   title: string;
@@ -7,6 +9,7 @@ export interface ApiDocument {
   documentType: string;
   status: string;
   departmentId: string | null;
+  teamId: string | null;
   accessScope: string;
   updatedAt: string;
   currentVersion: {
@@ -57,8 +60,8 @@ export const documentApi = {
     title: string;
     description: string;
     documentType: string;
-    departmentId?: string;
-    accessScope: string;
+    accessScope: AccessScope;
+    teamId?: string | null;
   }) => {
     const form = new FormData();
     form.append("file", input.file);
@@ -66,7 +69,7 @@ export const documentApi = {
     form.append("description", input.description);
     form.append("documentType", input.documentType);
     form.append("accessScope", input.accessScope);
-    if (input.departmentId) form.append("departmentId", input.departmentId);
+    form.append("teamId", input.teamId || "");
     return requestMultipart<ApiDocument>("/documents", form);
   },
   update: (
@@ -77,6 +80,7 @@ export const documentApi = {
       documentType: string;
       departmentId: string | null;
       accessScope: string;
+      teamId: string | null;
     }>,
   ) =>
     apiRequest<ApiDocument>(`/documents/${id}`, {

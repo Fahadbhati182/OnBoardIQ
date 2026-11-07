@@ -18,11 +18,9 @@ import {
   updateTask,
 } from "../controllers/taskController.js";
 
-const rolesAvailable = ["EMPLOYEE", "HR_ADMIN", "IT_ADMIN"];
-
 const router = Router();
-const employee = [requireAuth, allowedRoles(["EMPLOYEE"])];
-const hr = [requireAuth, allowedRoles(["HR_ADMIN"])];
+const employee = [requireAuth, allowedRoles(["ENGINEER"])];
+const engineeringAdmin = [requireAuth, allowedRoles(["ENGINEERING_ADMIN"])];
 
 router.get("/my-tasks", ...employee, AsynHandler(getMyTasks));
 router.get("/my-tasks/:assignmentId", ...employee, AsynHandler(getMyTask));
@@ -41,23 +39,31 @@ router.patch(
 
 router.get("/my-progress", ...employee, AsynHandler(getMyProgress));
 
-// HR_ADMIN
-router.post("/", ...hr, AsynHandler(createTask));
-router.get("/", ...hr, AsynHandler(listTasks));
+// ENGINEERING_ADMIN
+router.post("/", ...engineeringAdmin, AsynHandler(createTask));
+router.get("/", ...engineeringAdmin, AsynHandler(listTasks));
 router.get(
   "/admin/employees/:employeeId/tasks",
-  ...hr,
+  ...engineeringAdmin,
   AsynHandler(getEmployeeTasks),
 );
 router.get(
   "/admin/employees/:employeeId/progress",
-  ...hr,
+  ...engineeringAdmin,
   AsynHandler(getEmployeeProgress),
 );
-router.get("/:taskId", ...hr, AsynHandler(getTask));
-router.put("/:taskId", ...hr, AsynHandler(updateTask));
-router.patch("/:taskId/deactivate", ...hr, AsynHandler(deactivateTask));
-router.post("/:taskId/assign", ...hr, AsynHandler(assignTask));
-router.post("/:taskId/assign-bulk", ...hr, AsynHandler(assignTaskBulk));
+router.get("/:taskId", ...engineeringAdmin, AsynHandler(getTask));
+router.put("/:taskId", ...engineeringAdmin, AsynHandler(updateTask));
+router.patch(
+  "/:taskId/deactivate",
+  ...engineeringAdmin,
+  AsynHandler(deactivateTask),
+);
+router.post("/:taskId/assign", ...engineeringAdmin, AsynHandler(assignTask));
+router.post(
+  "/:taskId/assign-bulk",
+  ...engineeringAdmin,
+  AsynHandler(assignTaskBulk),
+);
 
 export default router;

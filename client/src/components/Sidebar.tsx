@@ -55,8 +55,21 @@ export const Sidebar: React.FC = () => {
     { id: 'profile', label: 'Profile', icon: <User size={18} /> },
   ];
 
+  const engineeringAdminNav: NavItem[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: <Home size={18} /> },
+    { id: 'documents', label: 'Engineering Documents', icon: <FolderOpen size={18} /> },
+    { id: 'document-upload', label: 'Upload Document', icon: <PlusCircle size={18} /> },
+    { id: 'task-admin', label: 'Onboarding Content', icon: <CheckSquare size={18} /> },
+    { id: 'task-create', label: 'Create Task', icon: <PlusCircle size={18} /> },
+    { id: 'employees', label: 'Employees', icon: <Users size={18} /> },
+    { id: 'profile', label: 'Profile', icon: <User size={18} /> },
+  ];
+
   const currentNavItems =
-    currentUserRole === 'hr_admin' ? hrNav : currentUserRole === 'it_admin' ? itNav : employeeNav;
+    currentUserRole === 'engineering_admin' ? engineeringAdminNav
+      : currentUserRole === 'hr_admin' ? hrNav
+      : currentUserRole === 'it_admin' ? itNav
+      : employeeNav;
 
   return (
     <aside style={styles.sidebar}>
@@ -74,7 +87,10 @@ export const Sidebar: React.FC = () => {
         <div style={styles.rolePill}>
           <span style={styles.roleDot} />
           <span style={styles.roleText}>
-            {currentUserRole === 'employee' ? 'Employee View' : currentUserRole === 'hr_admin' ? 'HR Admin View' : 'IT Admin View'}
+            {currentUserRole === 'engineering_admin' ? 'Engineering Admin View'
+              : currentUserRole === 'hr_admin' ? 'HR Admin View'
+              : currentUserRole === 'it_admin' ? 'IT Admin View'
+              : 'Engineer View'}
           </span>
         </div>
         <span style={styles.switchHint}>Switch ⇄</span>
@@ -118,7 +134,7 @@ export const Sidebar: React.FC = () => {
       </nav>
 
       {/* Direct Portal Quick Links */}
-      {currentUserRole !== 'employee' && (
+      {(currentUserRole === 'hr_admin' || currentUserRole === 'it_admin') && (
       <div style={styles.adminDirectLinks}>
         <div style={styles.navGroupTitle}>PORTALS</div>
         <button

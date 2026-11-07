@@ -22,6 +22,12 @@ export interface DepartmentSummary {
   description: string;
 }
 
+export interface TeamSummary {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export const authApi = {
   login: (email: string, password: string) =>
     apiRequest<{ user: AuthUser; accessToken: string }>('/auth/login', {
@@ -41,6 +47,7 @@ export const authApi = {
     }),
   employees: () => apiRequest<EmployeeSummary[]>('/auth/employees'),
   departments: () => apiRequest<DepartmentSummary[]>('/auth/departments'),
+  teams: () => apiRequest<TeamSummary[]>('/auth/teams'),
   refresh: () => apiRequest<{ accessToken: string }>('/auth/refresh', { method: 'POST' }),
   logout: () => apiRequest<null>('/auth/logout', { method: 'POST' }),
 };

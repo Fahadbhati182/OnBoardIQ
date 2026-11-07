@@ -315,8 +315,8 @@ async function verifyEmployee(employeeId) {
   if (error) throw new ApiError(500, "An unexpected database error occurred");
   if (!data) throw new ApiError(404, "Employee was not found");
   if (!data.is_active) throw new ApiError(409, "Employee account is inactive");
-  if (data.role !== "EMPLOYEE")
-    throw new ApiError(400, "The selected user is not an employee");
+  if (data.role !== "ENGINEER")
+    throw new ApiError(400, "The selected user is not an engineer");
   return data;
 }
 

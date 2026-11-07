@@ -1,429 +1,301 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useApp } from '../context/AppContext';
-import {
-  Sparkles,
-  Plus,
-  Send,
-  Paperclip,
-  FileText,
-  Download,
-  Bot,
-  ExternalLink,
-} from 'lucide-react';
-import { chatSuggestedPrompts } from '../data/mockData';
+import React, { useEffect, useRef, useState } from "react";
+import { Bot, MessageSquare, Pencil, Plus, RefreshCw, Send, Sparkles, Trash2, User } from "lucide-react";
+import { useApp } from "../context/AppContext";
+import { chatApi, ChatCitation, ChatMessageRecord, ChatSession } from "../services/chatApi";
+
+const selectedSessionKey = "onboardiq-selected-chat-session";
+type DisplayMessage = ChatMessageRecord & { optimistic?: boolean; failed?: boolean; retryText?: string };
+
+function formatTime(value: string) {
+  return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function MarkdownText({ content }: { content: string }) {
+  const blocks = content.split(/\n{2,}/);
+  return <div>{blocks.map((block, index) => {
+    const lines = block.split("\n");
+    if (lines.length >= 2 && lines.every((line) => line.includes("|"))) {
+      const rows = lines.filter((line) => !/^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$/.test(line))
+        .map((line) => line.split("|").map((cell) => cell.trim()).filter(Boolean));
+      if (rows.length) {
+        return <table key={index} style={{ borderCollapse: "collapse", margin: "10px 0", width: "100%", fontSize: 13 }}>
+          <tbody>{rows.map((row, rowIndex) => <tr key={rowIndex}>{row.map((cell) => rowIndex === 0 ? <th key={cell} style={styles.tableCell}>{inlineMarkdown(cell)}</th> : <td key={cell} style={styles.tableCell}>{inlineMarkdown(cell)}</td>)}</tr>)}</tbody>
+        </table>;
+      }
+    }
+    const isList = lines.every((line) => /^\s*(?:[-*]|\d+\.)\s+/.test(line));
+    if (isList) {
+      const ordered = /^\s*\d+\./.test(lines[0]);
+      const List = ordered ? "ol" : "ul";
+      return <List key={index} style={{ margin: "8px 0", paddingLeft: 22 }}>{lines.map((line) => <li key={line}>{inlineMarkdown(line.replace(/^\s*(?:[-*]|\d+\.)\s+/, ""))}</li>)}</List>;
+    }
+    if (/^#{1,3}\s+/.test(lines[0])) {
+      const level = Math.min(lines[0].match(/^#+/)?.[0].length || 2, 3) as 1 | 2 | 3;
+      const Heading = (`h${level}`) as "h1" | "h2" | "h3";
+      return <Heading key={index} style={{ color: "#f8fafc", margin: "8px 0" }}>{inlineMarkdown(lines[0].replace(/^#{1,3}\s+/, ""))}</Heading>;
+    }
+    return <p key={index} style={{ margin: "7px 0" }}>{lines.map((line, lineIndex) => <React.Fragment key={`${line}-${lineIndex}`}>{lineIndex > 0 && <br />}{inlineMarkdown(line)}</React.Fragment>)}</p>;
+  })}</div>;
+}
+
+function inlineMarkdown(value: string) {
+  const parts = value.split(/(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_)/g);
+  return parts.map((part, index) => {
+    if (/^\*\*.*\*\*$|^__.*__$/.test(part)) return <strong key={index}>{part.slice(2, -2)}</strong>;
+    if (/^\*.*\*$|^_.*_$/.test(part)) return <em key={index}>{part.slice(1, -1)}</em>;
+    return part;
+  });
+}
 
 export const AIAssistantPage: React.FC = () => {
-  const {
-    chatMessages,
-    sendChatMessage,
-    clearChat,
-    currentUser,
-    setActiveDocModal,
-    documents,
-    addToast,
-  } = useApp();
+  const { addToast } = useApp();
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeSession, setActiveSession] = useState<ChatSession | null>(null);
+  const [messagesBySession, setMessagesBySession] = useState<Record<string, DisplayMessage[]>>({});
+  const [citations, setCitations] = useState<Record<string, ChatCitation[]>>({});
+  const [input, setInput] = useState("");
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const endRef = useRef<HTMLDivElement>(null);
 
-  const [inputVal, setInputVal] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const loadSessions = async () => {
+    const loaded = await chatApi.listSessions();
+    setSessions(loaded);
+    const savedId = localStorage.getItem(selectedSessionKey);
+    const selected = loaded.find((session) => session.id === savedId);
+    if (selected) {
+      setActiveSession(selected);
+      const history = await chatApi.getMessages(selected.id);
+      setMessagesBySession((previous) => ({ ...previous, [selected.id]: history }));
+    }
+  };
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages]);
+    loadSessions().catch(() => addToast("Unable to load your conversations", "error"));
+  }, []);
 
-  const handleSend = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputVal.trim()) return;
-    sendChatMessage(inputVal);
-    setInputVal('');
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [activeSession?.id, messagesBySession, sending]);
+
+  const messages = activeSession ? messagesBySession[activeSession.id] || [] : [];
+
+  const createSession = async () => {
+    const session = await chatApi.createSession();
+    setSessions((previous) => [session, ...previous]);
+    setActiveSession(session);
+    setMessagesBySession((previous) => ({ ...previous, [session.id]: [] }));
+    localStorage.setItem(selectedSessionKey, session.id);
   };
 
-  const handlePromptClick = (prompt: string) => {
-    sendChatMessage(prompt);
+  const selectSession = async (session: ChatSession) => {
+    setActiveSession(session);
+    localStorage.setItem(selectedSessionKey, session.id);
+    if (messagesBySession[session.id]) {
+      setHistoryLoading(false);
+    } else {
+      setHistoryLoading(true);
+    }
+    try {
+      const history = await chatApi.getMessages(session.id);
+      setMessagesBySession((previous) => ({ ...previous, [session.id]: history }));
+    } catch {
+      addToast("Unable to load this conversation", "error");
+    } finally {
+      setHistoryLoading(false);
+    }
   };
 
-  const handleOpenDoc = (docTitle: string) => {
-    const doc = documents.find((d) => d.title.toLowerCase().includes('parental')) || documents[0];
-    setActiveDocModal(doc);
+  const send = async (retryText?: string) => {
+    const text = (retryText ?? input).trim();
+    if (!text || sending) return;
+    let session = activeSession;
+    let optimisticId = "";
+    try {
+      if (!session) {
+        session = await chatApi.createSession();
+        setActiveSession(session);
+        setSessions((previous) => [session!, ...previous]);
+        localStorage.setItem(selectedSessionKey, session.id);
+      }
+      optimisticId = `optimistic-${Date.now()}`;
+      const optimisticMessage: DisplayMessage = {
+        id: optimisticId,
+        session_id: session.id,
+        role: "user",
+        content: text,
+        created_at: new Date().toISOString(),
+        optimistic: true,
+      };
+      setMessagesBySession((previous) => ({
+        ...previous,
+        [session!.id]: [...(previous[session!.id] || []), optimisticMessage],
+      }));
+      setInput("");
+      setSending(true);
+      const result = await chatApi.sendMessage(session.id, text);
+      setMessagesBySession((previous) => ({
+        ...previous,
+        [session!.id]: [
+          ...(previous[session!.id] || []).filter((message) => message.id !== optimisticId),
+          result.userMessage,
+          result.assistantMessage,
+        ],
+      }));
+      setCitations((previous) => ({ ...previous, [result.assistantMessage.id]: result.citations }));
+      setSessions((previous) => previous.map((item) => item.id === result.session.id ? result.session : item)
+        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
+      setActiveSession(result.session);
+    } catch (error) {
+      setMessagesBySession((previous) => ({
+        ...previous,
+        [session!.id]: (previous[session!.id] || []).map((message) =>
+          message.id === optimisticId ? { ...message, failed: true, retryText: text } : message,
+        ),
+      }));
+      setInput(text);
+      addToast(error instanceof Error ? error.message : "The assistant could not answer", "error");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const rename = async (session: ChatSession) => {
+    const title = editingTitle.trim();
+    if (!title || title === session.title) {
+      setEditingId(null);
+      return;
+    }
+    try {
+      const updated = await chatApi.renameSession(session.id, title);
+      setSessions((previous) => previous.map((item) => item.id === session.id ? updated : item));
+      if (activeSession?.id === session.id) setActiveSession(updated);
+      setEditingId(null);
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : "Unable to rename conversation", "error");
+    }
+  };
+
+  const remove = async (session: ChatSession) => {
+    if (!window.confirm(`Delete "${session.title}"?`)) return;
+    try {
+      await chatApi.deleteSession(session.id);
+      const remaining = sessions.filter((item) => item.id !== session.id);
+      setSessions(remaining);
+      if (activeSession?.id === session.id) {
+        setActiveSession(null);
+        setMessagesBySession((previous) => {
+          const next = { ...previous };
+          delete next[session.id];
+          return next;
+        });
+        localStorage.removeItem(selectedSessionKey);
+      }
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : "Unable to delete conversation", "error");
+    }
   };
 
   return (
-    <div className="page-container" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - var(--topbar-height) - 40px)', paddingBottom: '30px' }}>
-      {/* Header */}
-      <div style={styles.headerRow}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <h1 style={styles.pageTitle}>AI Assistant</h1>
-            <span style={styles.aiBadge}>ISS Copilot</span>
-          </div>
-          <p style={styles.pageSubtitle}>
-            Ask anything about company policies, onboarding, benefits and more.
-          </p>
-        </div>
-
-        <button onClick={clearChat} className="btn-secondary" style={styles.newChatBtn}>
-          <Plus size={15} />
-          <span>New Chat</span>
+    <div className="page-container chat-workspace" style={styles.layout}>
+      <aside className="glass-card chat-sidebar" style={styles.conversationSidebar}>
+        <button className="btn-primary" style={styles.newChat} onClick={() => void createSession()}>
+          <Plus size={16} /> New Chat
         </button>
-      </div>
-
-      {/* Chat Thread Container */}
-      <div className="glass-card" style={styles.chatCard}>
-        <div style={styles.messagesStream}>
-          {chatMessages.length === 0 ? (
-            <div style={styles.emptyChatState}>
-              <div style={styles.emptyIconBox}>
-                <Sparkles size={28} color="#e7d7be" />
-              </div>
-              <h3 style={{ fontSize: '18px', color: '#f8fafc', marginTop: '12px' }}>
-                How can ISS AI assist you today?
-              </h3>
-              <p style={{ fontSize: '13px', color: '#8da498', maxWidth: '420px', textAlign: 'center', marginTop: '4px' }}>
-                Ask about parental leave, hardware requisitions, health benefits, or office policies.
-              </p>
+        <div style={styles.sidebarHeading}>Recent conversations</div>
+        {!sessions.length && !activeSession ? <div style={styles.emptySidebar}>Your conversations will appear here.</div> : sessions.length === 0 ? (
+          <div style={styles.emptySidebar}>Your conversations will appear here.</div>
+        ) : sessions.map((session) => (
+          <div key={session.id} style={{ ...styles.sessionRow, ...(activeSession?.id === session.id ? styles.activeSession : {}) }}>
+            {editingId === session.id ? (
+              <input autoFocus value={editingTitle} onChange={(event) => setEditingTitle(event.target.value)}
+                onBlur={() => void rename(session)} onKeyDown={(event) => { if (event.key === "Enter") void rename(session); }}
+                style={styles.renameInput} maxLength={255} />
+            ) : (
+              <button onClick={() => void selectSession(session)} style={styles.sessionButton}>
+                <MessageSquare size={15} /><span>{session.title}</span>
+              </button>
+            )}
+            <div style={styles.sessionActions}>
+              <button title="Rename" onClick={() => { setEditingId(session.id); setEditingTitle(session.title); }}><Pencil size={13} /></button>
+              <button title="Delete" onClick={() => void remove(session)}><Trash2 size={13} /></button>
             </div>
-          ) : (
-            chatMessages.map((msg) => {
-              const isUser = msg.sender === 'user';
-
-              return (
-                <div
-                  key={msg.id}
-                  style={{
-                    ...styles.messageRow,
-                    justifyContent: isUser ? 'flex-end' : 'flex-start',
-                  }}
-                >
-                  {/* AI Avatar */}
-                  {!isUser && (
-                    <div style={styles.aiAvatar}>
-                      <span className="brand-iss" style={{ fontSize: '14px', fontStyle: 'italic' }}>
-                        iss
-                      </span>
-                    </div>
-                  )}
-
-                  <div
-                    style={{
-                      ...styles.messageBubble,
-                      ...(isUser ? styles.userBubble : styles.aiBubble),
-                    }}
-                  >
-                    <p style={{ ...styles.messageText, color: isUser ? '#f8fafc' : '#e2e8f0' }}>
-                      {msg.text}
-                    </p>
-
-                    {/* Embedded Document Preview Card */}
-                    {msg.documentAttachment && (
-                      <div
-                        onClick={() => handleOpenDoc(msg.documentAttachment!.title)}
-                        style={styles.attachmentCard}
-                      >
-                        <div style={styles.attachmentIconBox}>
-                          <FileText size={20} color="#f87171" />
-                        </div>
-                        <div style={styles.attachmentInfo}>
-                          <div style={styles.attachmentTitle}>
-                            {msg.documentAttachment.title}
-                          </div>
-                          <div style={styles.attachmentMeta}>
-                            {msg.documentAttachment.fileType} • {msg.documentAttachment.fileSize}
-                          </div>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            addToast(`Downloading ${msg.documentAttachment!.title}...`, 'info');
-                          }}
-                          style={styles.downloadIconBtn}
-                          title="Download document"
-                        >
-                          <Download size={15} />
-                        </button>
-                      </div>
-                    )}
-
-                    <span style={styles.timestamp}>{msg.timestamp}</span>
-                  </div>
-
-                  {/* User Avatar */}
-                  {isUser && (
-                    <div style={styles.userAvatar}>
-                      {currentUser.initials}
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Suggested Prompts Chips */}
-        <div style={styles.suggestionsContainer}>
-          {chatSuggestedPrompts.slice(0, 4).map((prompt, idx) => (
-            <button
-              key={idx}
-              onClick={() => handlePromptClick(prompt)}
-              style={styles.promptChip}
-            >
-              {prompt}
-            </button>
+          </div>
+        ))}
+      </aside>
+      <section className="glass-card chat-card" style={styles.chatCard}>
+        <header style={styles.header}>
+          <div><h1 style={styles.title}>AI Assistant</h1><p style={styles.subtitle}>Conversation-aware answers from your company knowledge base</p></div>
+          <Sparkles size={22} color="#e7d7be" />
+        </header>
+        <div style={styles.messageStream}>
+          {historyLoading ? <div style={styles.historyLoading}>Loading messages…</div> : !activeSession || messages.length === 0 ? (
+            <div style={styles.emptyChat}><Sparkles size={30} color="#e7d7be" /><h2>How can I help today?</h2><p>Ask about company policies, onboarding, benefits, or IT procedures.</p></div>
+          ) : messages.map((message) => (
+            <div key={message.id} style={{ ...styles.messageRow, justifyContent: message.role === "user" ? "flex-end" : "flex-start" }}>
+              {message.role === "assistant" && <div style={styles.avatar}><Bot size={16} /></div>}
+              <div style={{ ...styles.messageBubble, ...(message.role === "user" ? styles.userBubble : styles.assistantBubble), ...(message.failed ? styles.failedBubble : {}) }}>
+                <div style={styles.messageText}>{message.role === "assistant" ? <MarkdownText content={message.content} /> : message.content}</div>
+                {message.role === "assistant" && (citations[message.id] || []).length > 0 && (
+                  <details style={styles.citations}><summary>Sources ({citations[message.id].length})</summary>{citations[message.id].map((citation, index) => <span key={`${message.id}-${index}`}>[{index + 1}] {citation.document_title || "Company document"}{citation.page_number ? ` · p. ${citation.page_number}` : ""}</span>)}</details>
+                )}
+                <small style={styles.timestamp}>{formatTime(message.created_at)}</small>
+                {message.failed && <button onClick={() => void send(message.retryText || message.content)} style={styles.retry}><RefreshCw size={12} /> Retry</button>}
+              </div>
+              {message.role === "user" && <div style={styles.avatar}><User size={16} /></div>}
+            </div>
           ))}
+          {sending && <div style={styles.thinking}><div style={styles.avatar}><Sparkles size={15} /></div><div style={styles.thinkingBubble}><span /> <span /> <span /> OnBoardIQ is thinking…</div></div>}
+          <div ref={endRef} />
         </div>
-
-        {/* Input Bar */}
-        <form onSubmit={handleSend} style={styles.inputContainer}>
-          <button
-            type="button"
-            onClick={() => addToast('File upload attached to query', 'info')}
-            style={styles.clipBtn}
-            title="Attach File"
-          >
-            <Paperclip size={18} />
-          </button>
-
-          <input
-            type="text"
-            value={inputVal}
-            onChange={(e) => setInputVal(e.target.value)}
-            placeholder="Ask a question..."
-            style={styles.chatInput}
-          />
-
-          <button
-            type="submit"
-            disabled={!inputVal.trim()}
-            style={{
-              ...styles.sendBtn,
-              opacity: inputVal.trim() ? 1 : 0.5,
-              cursor: inputVal.trim() ? 'pointer' : 'default',
-            }}
-          >
-            <Send size={16} />
-          </button>
+        <form style={styles.composer} onSubmit={(event) => { event.preventDefault(); void send(); }}>
+          <textarea value={input} onChange={(event) => setInput(event.target.value)} placeholder="Ask a question…" rows={1}
+            onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); void send(); } }}
+            style={styles.input} disabled={sending} />
+          <button type="submit" className="btn-primary" disabled={!input.trim() || sending} style={styles.sendButton}><Send size={16} /></button>
         </form>
-      </div>
+        <div style={styles.disclaimer}>AI responses are grounded in documents you are authorized to access.</div>
+      </section>
     </div>
   );
 };
 
 const styles: Record<string, React.CSSProperties> = {
-  headerRow: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: '20px',
-  },
-  pageTitle: {
-    fontSize: '24px',
-    fontWeight: 700,
-    color: '#f8fafc',
-  },
-  aiBadge: {
-    fontSize: '11px',
-    fontWeight: 700,
-    background: 'rgba(231, 215, 190, 0.15)',
-    border: '1px solid rgba(231, 215, 190, 0.3)',
-    color: '#e7d7be',
-    borderRadius: '6px',
-    padding: '2px 8px',
-  },
-  pageSubtitle: {
-    fontSize: '13.5px',
-    color: '#8da498',
-    marginTop: '3px',
-  },
-  newChatBtn: {
-    padding: '8px 16px',
-    fontSize: '13px',
-  },
-  chatCard: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
-    padding: '20px 24px 16px',
-  },
-  messagesStream: {
-    flex: 1,
-    overflowY: 'auto',
-    paddingRight: '8px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-  },
-  emptyChatState: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
-    padding: '40px',
-  },
-  emptyIconBox: {
-    width: '56px',
-    height: '56px',
-    borderRadius: '16px',
-    background: 'rgba(231, 215, 190, 0.12)',
-    border: '1px solid rgba(231, 215, 190, 0.3)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  messageRow: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: '12px',
-    width: '100%',
-  },
-  aiAvatar: {
-    width: '36px',
-    height: '36px',
-    borderRadius: '50%',
-    background: '#0d221a',
-    border: '1px solid rgba(231, 215, 190, 0.4)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-  },
-  userAvatar: {
-    width: '36px',
-    height: '36px',
-    borderRadius: '50%',
-    background: 'linear-gradient(135deg, #d4af37 0%, #a88424 100%)',
-    color: '#081711',
-    fontWeight: 700,
-    fontSize: '13px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  messageBubble: {
-    maxWidth: '650px',
-    padding: '16px 20px',
-    borderRadius: '18px',
-    position: 'relative',
-  },
-  userBubble: {
-    background: 'rgba(19, 44, 34, 0.95)',
-    border: '1px solid rgba(46, 125, 96, 0.35)',
-    borderBottomRightRadius: '4px',
-  },
-  aiBubble: {
-    background: 'rgba(10, 26, 19, 0.9)',
-    border: '1px solid rgba(46, 125, 96, 0.25)',
-    borderBottomLeftRadius: '4px',
-  },
-  messageText: {
-    fontSize: '13.5px',
-    lineHeight: 1.6,
-    whiteSpace: 'pre-line',
-  },
-  timestamp: {
-    display: 'block',
-    fontSize: '10.5px',
-    color: '#64748b',
-    marginTop: '6px',
-    textAlign: 'right',
-  },
-  attachmentCard: {
-    marginTop: '12px',
-    background: 'rgba(255, 255, 255, 0.04)',
-    border: '1px solid rgba(46, 125, 96, 0.3)',
-    borderRadius: '12px',
-    padding: '10px 14px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
-  attachmentIconBox: {
-    width: '36px',
-    height: '36px',
-    borderRadius: '8px',
-    background: 'rgba(239, 68, 68, 0.12)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  attachmentInfo: {
-    flex: 1,
-  },
-  attachmentTitle: {
-    fontSize: '13px',
-    fontWeight: 600,
-    color: '#f8fafc',
-  },
-  attachmentMeta: {
-    fontSize: '11px',
-    color: '#8da498',
-  },
-  downloadIconBtn: {
-    background: 'transparent',
-    border: 'none',
-    color: '#e7d7be',
-    cursor: 'pointer',
-    padding: '6px',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  suggestionsContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    padding: '12px 0 10px',
-    flexWrap: 'wrap',
-  },
-  promptChip: {
-    background: 'rgba(20, 46, 35, 0.7)',
-    border: '1px solid rgba(46, 125, 96, 0.3)',
-    borderRadius: '9999px',
-    padding: '6px 14px',
-    fontSize: '12px',
-    color: '#cbd5e1',
-    cursor: 'pointer',
-    transition: 'all 0.15s ease',
-  },
-  inputContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    background: 'rgba(10, 24, 18, 0.85)',
-    border: '1px solid rgba(46, 125, 96, 0.3)',
-    borderRadius: '14px',
-    padding: '6px 10px 6px 14px',
-  },
-  clipBtn: {
-    background: 'transparent',
-    border: 'none',
-    color: '#8da498',
-    cursor: 'pointer',
-    padding: '4px',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  chatInput: {
-    flex: 1,
-    background: 'transparent',
-    border: 'none',
-    color: '#f8fafc',
-    fontSize: '13.5px',
-    outline: 'none',
-  },
-  sendBtn: {
-    background: '#e7d7be',
-    border: 'none',
-    borderRadius: '10px',
-    width: '36px',
-    height: '36px',
-    color: '#0a1b14',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    transition: 'all 0.15s',
-  },
+  layout: { display: "flex", gap: 18, height: "calc(100vh - var(--topbar-height) - 40px)", paddingBottom: 30 },
+  conversationSidebar: { width: 280, padding: 14, overflowY: "auto", flexShrink: 0 },
+  newChat: { width: "100%", justifyContent: "center", display: "flex", gap: 8, alignItems: "center" },
+  sidebarHeading: { color: "#8da498", fontSize: 11, textTransform: "uppercase", letterSpacing: 1, margin: "22px 6px 10px" },
+  muted: { color: "#8da498", fontSize: 13, padding: 8 },
+  emptySidebar: { color: "#64766d", fontSize: 13, padding: 8, lineHeight: 1.5 },
+  sessionRow: { display: "flex", alignItems: "center", borderRadius: 8, marginBottom: 4, padding: "2px 4px" },
+  activeSession: { background: "rgba(231, 215, 190, 0.14)" },
+  sessionButton: { background: "transparent", border: 0, color: "#d8e3dd", display: "flex", alignItems: "center", gap: 8, padding: "9px 5px", textAlign: "left", flex: 1, minWidth: 0, cursor: "pointer", overflow: "hidden" },
+  sessionActions: { display: "flex", gap: 2 },
+  renameInput: { background: "transparent", border: "1px solid #6f8e7d", color: "#fff", borderRadius: 5, padding: 5, width: "100%" },
+  chatCard: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", padding: "20px 24px 14px" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid rgba(141,164,152,.18)", paddingBottom: 14 },
+  title: { color: "#f8fafc", fontSize: 23, margin: 0 },
+  subtitle: { color: "#8da498", fontSize: 13, margin: "4px 0 0" },
+  messageStream: { flex: 1, overflowY: "auto", padding: "24px 4px", display: "flex", flexDirection: "column", gap: 18 },
+  emptyChat: { margin: "auto", textAlign: "center", color: "#8da498" },
+  messageRow: { display: "flex" },
+  avatar: { width: 30, height: 30, borderRadius: "50%", background: "#e7d7be", color: "#0d2118", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, margin: "2px 8px" },
+  messageBubble: { maxWidth: "75%", borderRadius: 14, padding: "12px 15px", color: "#e2e8f0", lineHeight: 1.55 },
+  userBubble: { background: "#1d5941", borderBottomRightRadius: 3 },
+  assistantBubble: { background: "rgba(24,49,38,.85)", borderBottomLeftRadius: 3 },
+  messageText: { fontSize: 14, overflowWrap: "anywhere" },
+  failedBubble: { border: "1px solid rgba(248,113,113,.65)" },
+  timestamp: { display: "block", color: "#83a092", fontSize: 10, marginTop: 7 },
+  citations: { display: "flex", flexDirection: "column", gap: 3, borderTop: "1px solid rgba(141,164,152,.2)", marginTop: 12, paddingTop: 8, color: "#b7c8bf", fontSize: 11 },
+  thinking: { display: "flex", alignItems: "center", color: "#8da498", fontSize: 12 },
+  thinkingBubble: { background: "rgba(24,49,38,.85)", borderRadius: 14, padding: "10px 13px" },
+  historyLoading: { margin: "auto", color: "#8da498", fontSize: 13 },
+  retry: { display: "flex", alignItems: "center", gap: 4, color: "#fecaca", background: "transparent", border: 0, fontSize: 11, padding: "5px 0 0", cursor: "pointer" },
+  composer: { display: "flex", gap: 10, border: "1px solid rgba(141,164,152,.35)", borderRadius: 12, padding: 8, background: "rgba(6,17,13,.7)" },
+  input: { flex: 1, resize: "none", background: "transparent", border: 0, color: "#f8fafc", outline: 0, padding: "9px 7px", font: "inherit", maxHeight: 120 },
+  sendButton: { alignSelf: "flex-end", padding: 10 },
+  disclaimer: { color: "#64766d", textAlign: "center", fontSize: 10, marginTop: 8 },
+  tableCell: { border: "1px solid rgba(141,164,152,.25)", padding: "6px 8px", textAlign: "left" },
 };

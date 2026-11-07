@@ -13,8 +13,10 @@ import {
 } from "../utils/authTokens.js";
 import ApiError from "../utils/ApiError.js";
 
-const USER_COLUMNS ="id, name, email, password_hash, role, department_id, is_active";
+const USER_COLUMNS =
+  "id, name, email, password_hash, role, job_title, joining_date, team_id, is_active";
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync("invalid-password-placeholder",12,);
+const APPLICATION_ROLES = ["ENGINEER", "ENGINEERING_ADMIN"];
 
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
@@ -25,6 +27,12 @@ const REFRESH_COOKIE_OPTIONS = {
 
 function hashToken(token) {
   return createHash("sha256").update(token).digest("hex");
+}
+
+function validateApplicationRole(role) {
+  if (!APPLICATION_ROLES.includes(role)) {
+    throw new ApiError(403, "This account has an invalid application role");
+  }
 }
 
 function toPublicUser(user) {
@@ -125,6 +133,7 @@ export async function register(req, res) {
       name,
       email: normalizedEmail,
       password_hash: passwordHash,
+      role: "ENGINEER",
     })
     .select(USER_COLUMNS)
     .single();
@@ -165,6 +174,7 @@ export async function login(req, res) {
   if (!user.is_active) {
     throw new ApiError(403, "This account is inactive");
   }
+  validateApplicationRole(user.role);
 
   const accessToken = await createSession(user, req, res);
   res.status(200).json({
@@ -213,6 +223,7 @@ export async function refresh(req, res) {
     clearRefreshCookie(res);
     throw new ApiError(401, "The account is unavailable");
   }
+  validateApplicationRole(user.data.role);
 
   const nextRefreshToken = createRefreshToken(user.data.id, claims.sid);
   const { data: session, error } = await supabase
@@ -291,8 +302,8 @@ export function getCurrentUser(req, res) {
 export async function listEmployees(req, res) {
   const { data, error } = await supabase
     .from("users")
-    .select("id, name, email, role, department_id, is_active")
-    .eq("role", "EMPLOYEE")
+    .select("id, name, email, role, job_title, joining_date, team_id, is_active")
+    .eq("role", "ENGINEER")
     .order("name", { ascending: true });
 
   if (error) {
@@ -306,7 +317,9 @@ export async function listEmployees(req, res) {
       name: employee.name,
       email: employee.email,
       role: employee.role,
-      departmentId: employee.department_id,
+      jobTitle: employee.job_title,
+      joiningDate: employee.joining_date,
+      teamId: employee.team_id,
       isActive: employee.is_active,
     })),
   });

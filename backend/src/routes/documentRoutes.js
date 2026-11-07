@@ -29,9 +29,10 @@ const upload = multer({
   },
 });
 
-const administrators = [requireAuth, allowedRoles(["HR_ADMIN"])];
+const administrators = [requireAuth, allowedRoles(["ENGINEERING_ADMIN"])];
 
 router.get("/", requireAuth, AsynHandler(listDocuments));
+
 router.post(
   "/",
   ...administrators,
@@ -69,4 +70,4 @@ router.get(
 
 export default router;
 
-// /api/documents/internal/documents/:id/download
+

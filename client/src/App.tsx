@@ -45,7 +45,9 @@ const AppContent: React.FC = () => {
     );
   }
 
-  const allowedPages = currentUserRole === 'hr_admin'
+  const allowedPages = currentUserRole === 'engineering_admin'
+    ? ['dashboard', 'documents', 'task-admin', 'task-create', 'employees', 'profile', 'company', 'document-upload']
+    : currentUserRole === 'hr_admin'
     ? ['dashboard', 'documents', 'hr-docs', 'task-admin', 'task-create', 'employees', 'profile', 'company', 'document-upload']
     : currentUserRole === 'it_admin'
     ? ['dashboard', 'it-access', 'documents', 'employees', 'profile', 'company']

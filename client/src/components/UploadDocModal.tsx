@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { X, UploadCloud, FileText, Check } from 'lucide-react';
-import { DocumentCategory, DocumentStatus } from '../types';
+import { DocumentStatus } from '../types';
 import { documentApi } from '../services/documentApi';
+
+const documentTypeOptions = ['POLICY', 'GUIDE', 'HR', 'IT'];
+const accessScopeOptions = ['ALL_EMPLOYEES', 'ENGINEERS_ONLY', 'ADMINS_ONLY'];
 
 interface UploadDocModalProps {
   isOpen: boolean;
@@ -13,11 +16,11 @@ export const UploadDocModal: React.FC<UploadDocModalProps> = ({ isOpen, onClose 
   const { addToast } = useApp();
 
   const [title, setTitle] = useState('');
-  const [type, setType] = useState('Policy');
-  const [category, setCategory] = useState<DocumentCategory>('Policies');
+  const [type, setType] = useState('');
   const [department, setDepartment] = useState('All');
   const [version, setVersion] = useState('v1.0');
   const [status, setStatus] = useState<DocumentStatus>('published');
+  const [accessScope, setAccessScope] = useState('ALL_EMPLOYEES');
   const [summary, setSummary] = useState('');
   const [file, setFile] = useState<File | null>(null);
 
@@ -105,21 +108,18 @@ export const UploadDocModal: React.FC<UploadDocModalProps> = ({ isOpen, onClose 
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div>
+            <div style={{ gridColumn: '1 / -1' }}>
               <label style={{ fontSize: '12px', fontWeight: 600, color: '#cbd5e1', display: 'block', marginBottom: '6px' }}>
-                Category
+                Document type *
               </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as DocumentCategory)}
-                style={inputStyle}
-              >
-                <option value="Policies">Policies</option>
-                <option value="Guides">Guides</option>
-                <option value="HR">HR</option>
-                <option value="IT">IT</option>
-                <option value="General">General</option>
-              </select>
+              <input type="text" required placeholder="Enter document type" value={type} onChange={(e) => setType(e.target.value)} style={inputStyle} />
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '7px' }}>
+                {documentTypeOptions.map((option) => (
+                  <button type="button" key={option} onClick={() => setType(option)} style={{ ...optionStyle, ...(type === option ? selectedOptionStyle : {}) }}>
+                    {option}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div>
@@ -153,6 +153,16 @@ export const UploadDocModal: React.FC<UploadDocModalProps> = ({ isOpen, onClose 
                 onChange={(e) => setVersion(e.target.value)}
                 style={inputStyle}
               />
+            </div>
+
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 600, color: '#cbd5e1', display: 'block', marginBottom: '6px' }}>
+                Access scope *
+              </label>
+              <select required value={accessScope} onChange={(e) => setAccessScope(e.target.value)} style={inputStyle}>
+                <option value="">---</option>
+                {accessScopeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
             </div>
 
             <div>
@@ -235,4 +245,20 @@ const inputStyle: React.CSSProperties = {
   color: '#f8fafc',
   fontSize: '13px',
   outline: 'none',
+};
+
+const optionStyle: React.CSSProperties = {
+  color: '#9ab0a5',
+  background: 'rgba(31, 83, 60, 0.35)',
+  border: '1px solid rgba(46, 125, 96, 0.3)',
+  borderRadius: '999px',
+  padding: '4px 9px',
+  fontSize: '10px',
+  cursor: 'pointer',
+};
+
+const selectedOptionStyle: React.CSSProperties = {
+  color: '#dce8e1',
+  background: 'rgba(28, 161, 96, 0.2)',
+  borderColor: '#57e4a0',
 };

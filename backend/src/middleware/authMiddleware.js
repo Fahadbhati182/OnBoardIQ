@@ -37,7 +37,7 @@ export async function requireAuth(req, _res, next) {
 
   const { data: user, error } = await supabase
     .from("users")
-    .select("id, name, email, role, department_id, is_active")
+    .select("id, name, email, role, team_id, is_active")
     .eq("id", claims.sub)
     .maybeSingle();
 
@@ -49,6 +49,9 @@ export async function requireAuth(req, _res, next) {
     return next(
       new ApiError(401, "You are not allowed to access this resource"),
     );
+  }
+  if (!["ENGINEER", "ENGINEERING_ADMIN"].includes(user.role)) {
+    return next(new ApiError(403, "User has an invalid application role"));
   }
 
   req.user = user;
@@ -87,7 +90,6 @@ export function requireServiceAuth(req, res, next) {
   }
 
   const providedToken = authorization.slice(7);
-  console.log(providedToken);
 
   const provided = Buffer.from(providedToken);
   const expected = Buffer.from(expectedToken);
