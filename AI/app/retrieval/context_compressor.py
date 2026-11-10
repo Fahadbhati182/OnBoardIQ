@@ -63,6 +63,7 @@ def compress_document(question:str,document:str):
 
 
 
+
 def compress_search_results(
     question: str,
     search_results: list,
@@ -72,8 +73,8 @@ def compress_search_results(
 
     for result in search_results:
 
-        # Extract text from Qdrant payload
-        original_text = result.payload.get("text", "")
+        # Results are dictionaries, not ScoredPoint objects
+        original_text = result.get("text", "")
 
         if not original_text:
             continue
@@ -83,20 +84,19 @@ def compress_search_results(
             document=original_text,
         )
 
-        # Skip documents containing no relevant information
+        # Skip irrelevant documents
         if not compressed_text:
             continue
 
-        # Convert Qdrant ScoredPoint into a dictionary
+        # Preserve original document structure and metadata
         compressed_result = {
-            "id": result.id,
-            "score": result.score,
+            **result,
             "original_text": original_text,
             "text": compressed_text,
-            **result.payload,
         }
 
         compressed_results.append(compressed_result)
 
     return compressed_results
+
 

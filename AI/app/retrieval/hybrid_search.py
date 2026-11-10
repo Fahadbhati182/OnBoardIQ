@@ -30,13 +30,13 @@ def hybrid_search(
                 query=dense_embedding_query,
                 using="dense",
                 limit=candidate_k,
-                filter=query_filter
+                # filter=query_filter
             ),
             Prefetch(
                 query=sparse_embedding_query,
                 using="sparse",
                 limit=candidate_k,
-                filter=query_filter
+                # filter=query_filter
             )
         ],
         query=RrfQuery(

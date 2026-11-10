@@ -31,7 +31,7 @@ export const TaskModal: React.FC = () => {
             style={{
               position: 'absolute',
               inset: 0,
-              background: 'linear-gradient(to bottom, rgba(6, 17, 13, 0.4), rgba(13, 34, 26, 0.95))',
+              background: 'linear-gradient(to bottom, color-mix(in srgb, var(--bg-primary) 40%, transparent), var(--bg-card))',
             }}
           />
           <button
@@ -97,8 +97,8 @@ export const TaskModal: React.FC = () => {
 
           <div
             style={{
-              background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid rgba(46, 125, 96, 0.25)',
+              background: 'var(--theme-surface-tint)',
+              border: '1px solid var(--border-subtle)',
               borderRadius: '12px',
               padding: '16px',
               marginBottom: '24px',
@@ -114,7 +114,7 @@ export const TaskModal: React.FC = () => {
               }}
             >
               <span>Checklist Progress</span>
-              <span style={{ color: '#e7d7be', fontWeight: 600 }}>
+              <span style={{               color: 'var(--theme-accent-strong)', fontWeight: 600 }}>
                 {completedCount} of {totalCount} completed ({progressPercent}%)
               </span>
             </div>
@@ -130,7 +130,7 @@ export const TaskModal: React.FC = () => {
                 style={{
                   height: '100%',
                   width: `${progressPercent}%`,
-                  background: 'linear-gradient(90deg, #4ade80, #e7d7be)',
+                  background: 'linear-gradient(90deg, var(--theme-accent), var(--theme-accent-strong))',
                   transition: 'width 0.3s ease',
                 }}
               />

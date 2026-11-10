@@ -161,73 +161,57 @@
   }
 }
 
-.ticks {
-  position: relative;
-  width: 100%;
+.chat-workspace {
+  min-width: 0;
+  min-height: 0;
+}
 
-  &::before,
-  &::after {
-    content: '';
-    position: absolute;
-    top: -4.5px;
-    border: 5px solid transparent;
-  }
+.chat-sidebar {
+  max-height: 100%;
+}
 
+.chat-card {
+  min-width: 0;
+  min-height: 0;
+}
+
+.thinking-bubble > span {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin: 0 2px;
+  border-radius: 50%;
+  background: #e7d7be;
+  animation: onboardiq-thinking 1.2s infinite ease-in-out;
+}
+
+.thinking-bubble > span:nth-child(2) {
+  animation-delay: .15s;
+}
+
+.thinking-bubble > span:nth-child(3) {
+  animation-delay: .3s;
+}
+
+@keyframes onboardiq-thinking {
+  0%, 60%, 100% { transform: translateY(0); opacity: .45; }
+  30% { transform: translateY(-3px); opacity: 1; }
+}
+
+@media (max-width: 760px) {
   .chat-workspace {
-    min-width: 0;
+    height: auto !important;
+    min-height: calc(100vh - var(--topbar-height) - 24px);
+    flex-direction: column;
   }
 
   .chat-sidebar {
-    max-height: 100%;
+    width: auto !important;
+    max-height: 220px;
   }
 
-  .thinking-bubble > span {
-    display: inline-block;
-    width: 5px;
-    height: 5px;
-    margin: 0 2px;
-    border-radius: 50%;
-    background: #e7d7be;
-    animation: onboardiq-thinking 1.2s infinite ease-in-out;
-  }
-
-  .thinking-bubble > span:nth-child(2) {
-    animation-delay: .15s;
-  }
-
-  .thinking-bubble > span:nth-child(3) {
-    animation-delay: .3s;
-  }
-
-  @keyframes onboardiq-thinking {
-    0%, 60%, 100% { transform: translateY(0); opacity: .45; }
-    30% { transform: translateY(-3px); opacity: 1; }
-  }
-
-  @media (max-width: 760px) {
-    .chat-workspace {
-      height: auto !important;
-      min-height: calc(100vh - var(--topbar-height) - 24px);
-      flex-direction: column;
-    }
-
-    .chat-sidebar {
-      width: auto !important;
-      max-height: 220px;
-    }
-
-    .chat-card {
-      min-height: 65vh;
-      padding: 16px !important;
-    }
-  }
-
-  &::before {
-    left: 0;
-    border-left-color: var(--border);
-  }
-  &::after {
-    right: 0;
-    border-right-color: var(--border);
+  .chat-card {
+    min-height: 65vh;
+    padding: 16px !important;
   }
 }

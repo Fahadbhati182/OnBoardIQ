@@ -102,24 +102,61 @@ def prepare_context(compressed_documents: list[dict]):
 
         source_id = f"S{index}"
 
+        # Metadata is nested inside the document dictionary
+        metadata = document.get("metadata") or {}
+
+        print("\n========== CITATION METADATA DEBUG ==========")
+
+        for index, document in enumerate(compressed_documents, start=1):
+            print(f"\nDocument {index}")
+            print("Top-level keys:", document.keys())
+            print("Metadata:", document.get("metadata"))
+            print("Document ID:", document.get("document_id"))
+            print("Version ID:", document.get("version_id"))
+            print("File name:", document.get("file_name"))
+            print("Page:", document.get("page_number"))
+
+        print("=============================================\n")
+
+        # Support fields stored either at the top level or inside metadata
+        document_id = document.get("document_id") or metadata.get("document_id")
+        version_id = document.get("version_id") or metadata.get("version_id")
+
+        title = (
+            document.get("file_name")
+            or document.get("document_title")
+            or metadata.get("file_name")
+            or metadata.get("title")
+        )
+
+        page_number = (
+            document.get("page_number")
+            or metadata.get("page_number")
+            or metadata.get("page")
+        )
+
+        document_type = (
+            document.get("document_type")
+            or metadata.get("document_type")
+        )
+
         source_mapping[source_id] = {
-            "document_id": document.get("document_id"),
-            "version_id": document.get("version_id"),
-            "document_title": document.get("file_name"),
-            "page_number": document.get("page_number")
+            "document_id": document_id,
+            "version_id": version_id,
+            "document_title": title,
+            "page_number": page_number
         }
 
         context_parts.append(
             f"""
-                [Source: {source_id}]
-                
-                Document: {document.get('file_name', 'Unknown')}
-                Page: {document.get('page_number', 'Unknown')}
-                Document Type: {document.get('document_type', 'Unknown')}
-                
-                Content:
-                {document.get('text', '')}
-            """
+[Source: {source_id}]
+Document: {title or 'Unknown'}
+Page: {page_number or 'Unknown'}
+Document Type: {document_type or 'Unknown'}
+
+Content:
+{document.get('text', '')}
+"""
         )
 
     return "\n\n".join(context_parts), source_mapping

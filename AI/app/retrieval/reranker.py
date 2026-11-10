@@ -1,55 +1,58 @@
 
 from sentence_transformers import CrossEncoder
 
-
-RERANKER_MODEL_NAME="cross-encoder/ms-marco-MiniLM-L-6-v2"
-
+RERANKER_MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
 reranker = CrossEncoder(RERANKER_MODEL_NAME)
 
 
 def rerank_documents(
     user_query: str,
-    points: list,
+    documents: list,
     top_k: int = 5
 ) -> list:
 
     candidates = []
 
-    for point in points:
-        payload = point.payload or {}
+    for document in documents:
 
-        text = payload.get("text", "")
+        # Documents are dictionaries, not Qdrant ScoredPoint objects
+        text = document.get("text", "")
 
-        if not text:
+        if not text or not text.strip():
             continue
 
-        candidates.append({
-            "id": str(point.id),
-            "rrf_score": point.score,
-            "text": text,
-            "source": payload.get("source", "unknown"),
-        })
+        candidates.append(document)
 
     if not candidates:
         return []
 
-
+    # Create query-document pairs for CrossEncoder
     pairs = [
-        [user_query,candidate['text']]
-        for candidate in candidates
+        [user_query, document["text"]]
+        for document in candidates
     ]
 
+    # Calculate relevance scores
     scores = reranker.predict(pairs)
 
-    ranked_results = sorted(
-        zip(points, scores),
-        key=lambda x: x[1],
+    # Attach CrossEncoder scores while preserving original metadata
+    ranked_results = []
+
+    for document, score in zip(candidates, scores):
+
+        ranked_document = {
+            **document,
+            "rrf_score": document.get("score"),
+            "rerank_score": float(score)
+        }
+
+        ranked_results.append(ranked_document)
+
+    # Sort by CrossEncoder relevance score
+    ranked_results.sort(
+        key=lambda document: document["rerank_score"],
         reverse=True
     )
 
-    reranked_documents = [
-        point for point, score in ranked_results[:top_k]
-    ]
-
-    return reranked_documents[:top_k]
+    return ranked_results[:top_k]

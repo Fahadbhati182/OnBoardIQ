@@ -1,0 +1,119 @@
+[
+    {
+        "question_id": "Q001",
+        "user_input": "What are the sample annual, casual, and sick leave entitlements for an eligible full-time employee?",
+        "retrieved_contexts": [
+            "The following are the sample annual entitlements for an eligible full-time employee. Entitlements may be prorated for employees joining or leaving during the year. Part-time, fixed-term, and other employment categories may have different entitlements under their agreements and applicable law.\nLeave category\nSample entitlement\nTypical use\nAnnual / Earned Leave\n18 working days per calendar year\nPlanned personal time, rest, travel\nCasual Leave\n6 working days per calendar year",
+            "Annual / Earned Leave: 18 working days per calendar year\nCasual Leave: 6 working days per calendar year\nSick Leave: 6 working days per calendar year",
+            "For this demonstration policy, eligible full-time employees receive 18 working days of annual paid leave per calendar year, prorated for eligible partial years of service."
+        ],
+        "response": "Based on the retrieved company documents, here are the leave entitlements for an eligible full-time employee:\n\n*   **Annual Paid Leave:** Eligible full-time employees receive **18 working days** of annual paid leave per calendar year. This amount is prorated for eligible partial years of service [Source: S1, S2, S3].\n*   **Casual Leave:** The available company documents do not provide information regarding casual leave entitlements.\n*   **Sick Leave:** The available company documents do not provide information regarding sick leave entitlements.\n\nFor details on casual and sick leave, please consult the full Leave and Attendance Policy or contact the HR department, as this information is not present in the provided context.",
+        "reference": "The sample entitlements are 18 working days of Annual/Earned Leave, 6 working days of Casual Leave, and 6 working days of Sick Leave per calendar year. These are illustrative demo values and may be prorated or differ under employment terms and applicable law."
+    },
+    {
+        "question_id": "Q002",
+        "user_input": "What are the standard working hours for Mumbai-based office teams?",
+        "retrieved_contexts": [
+            "The standard schedule for Mumbai-based office teams is Monday to Friday, 9:30 a.m. to 6:30 p.m., with a reasonable meal break. The normal working week is 40 hours, excluding the meal break. Specific teams may follow approved shift schedules or customer-aligned hours.",
+            "The standard schedule for Mumbai-based office teams is Monday to Friday, 9:30 a.m. to 6:30 p.m., with a reasonable meal break. The normal working week is 40 hours, excluding the meal break. Specific teams may follow approved shift schedules or customer-aligned hours.",
+            "The standard schedule for Mumbai-based office teams is Monday to Friday, 9:30 a.m. to 6:30 p.m., including a reasonable meal break. Some roles may follow shift-based, customer-aligned, or project-specific schedules communicated by their manager.",
+            "The standard schedule for Mumbai-based office teams is Monday to Friday, 9:30 a.m. to 6:30 p.m.",
+            "The standard schedule for Mumbai-based office teams is Monday to Friday, 9:30 a.m. to 6:30 p.m., including a reasonable meal break. Some roles may follow shift-based, customer-aligned, or project-specific schedules communicated by their manager."
+        ],
+        "response": "The standard working hours for Mumbai-based office teams are **Monday to Friday, from 9:30 a.m. to 6:30 p.m.**, including a reasonable meal break. [Source: S1, S2, S3, S4, S5]\n\nPlease note that some roles may follow shift-based, customer-aligned, or project-specific schedules, which are communicated by your manager. [Source: S1, S2, S3, S4, S5]",
+        "reference": "The standard schedule is Monday to Friday, 9:30 a.m. to 6:30 p.m., with a reasonable meal break. The normal working week is 40 hours excluding the meal break. Specific teams may have approved shift or customer-aligned hours."
+    },
+    {
+        "question_id": "Q003",
+        "user_input": "How far in advance should planned leave be requested?",
+        "retrieved_contexts": [
+            "For planned leave of three or more consecutive working days, aim to submit the request at least 10 working days in advance. For shorter planned leave, aim to submit at least 3 working days in advance.",
+            "For planned leave of three or more consecutive working days, aim to submit the request at least 10 working days in advance. For shorter planned leave, aim to submit at least 3 working days in advance."
+        ],
+        "response": "Planned leave requests should be submitted in advance based on the duration of the leave:\n\n*   **Three or more consecutive working days:** Submit at least **10 working days** in advance.\n*   **Shorter planned leave (less than three consecutive working days):** Submit at least **3 working days** in advance.\n\n[Source: S1, S2]",
+        "reference": "For planned leave of three or more consecutive working days, employees should aim to submit the request at least 10 working days in advance. For shorter planned leave, they should aim to submit it at least 3 working days in advance. A request is not approved until the HR system or authorized manager confirms approval."
+    },
+    {
+        "question_id": "Q004",
+        "user_input": "How is Annual/Earned Leave accrued during the year?",
+        "retrieved_contexts": [
+            "Annual/Earned Leave is credited monthly at 1.5 working days per completed month of eligible service, subject to proration and the HR system's rounding rules.",
+            "The leave year runs from 1 January to 31 December. Annual/Earned Leave is credited monthly at 1.5 working days per completed month of eligible service, subject to proration and the HR system's rounding rules.",
+            "Annual / Earned Leave: 18 working days per calendar year",
+            "Annual / Earned Leave: 18 working days per calendar year"
+        ],
+        "response": "Based on the retrieved context, the available company documents do not provide enough information to explain how Annual/Earned Leave is accrued during the year.\n\nThe provided sources only state the total entitlement:\n*   **Annual / Earned Leave:** 18 working days per calendar year [Source: S1, S2, S3, S4]\n\nThe documents do not specify the accrual method (e.g., monthly pro-rata, upfront grant, or based on tenure). For details on the accrual schedule, please consult the full Leave and Attendance Policy or contact the HR department.",
+        "reference": "Annual/Earned Leave is credited monthly at 1.5 working days per completed month of eligible service, subject to proration and the HR system's rounding rules."
+    },
+    {
+        "question_id": "Q005",
+        "user_input": "What should an employee do when illness or an emergency prevents them from working?",
+        "retrieved_contexts": [
+            "If illness or an emergency prevents an employee from working, the employee should notify their manager as soon as reasonably possible, preferably before the scheduled start time. If the employee is unable to make contact, a family member or authorized representative may notify the company where appropriate. The employee should record the leave in the HR system when able.",
+            "If illness or an emergency prevents an employee from working, the employee should notify their manager as soon",
+            "Employees who are unwell or face an urgent personal situation should inform their manager as soon as reasonably possible and record the absence through the approved process. Supporting documents may be requested where permitted by applicable law and company policy."
+        ],
+        "response": "When an employee is unwell or faces an urgent personal situation that prevents them from working, they should take the following actions:\n\n1.  **Inform their manager** as soon as reasonably possible.\n2.  **Record the absence** through the approved process.\n\nPlease note that supporting documents may be requested, where permitted by applicable law and company policy.\n\n[Source: S1, S2, S3]",
+        "reference": "The employee should notify their manager as soon as reasonably possible, preferably before the scheduled start time. If unable to make contact, a family member or authorized representative may notify the company where appropriate. The employee should record the leave in the HR system when able."
+    },
+    {
+        "question_id": "Q006",
+        "user_input": "Does an employee automatically have the right to work remotely?",
+        "retrieved_contexts": [
+            "Remote work is not an automatic entitlement and does not change an employee's role, performance expectations, confidentiality obligations or applicable employment terms. Managers assess whether duties can be performed effectively away from company premises. Roles requiring physical presence, secure facilities, specialized equipment or direct on-site support may have different arrangements.",
+            "Remote work is not an automatic entitlement. Eligibility depends on role requirements, business needs, information-security constraints, customer commitments and manager approval.",
+            "Employees approved to work remotely must follow their agreed work schedule, remain reachable through approved channels during collaboration hours, attend required meetings, and record attendance using the designated system."
+        ],
+        "response": "Based on the retrieved context, the documents do not explicitly state whether remote work is an automatic right for all employees. However, the available policies consistently refer to \"Employees **approved** to work remotely,\" which implies that remote work is subject to an approval process rather than being an automatic entitlement.\n\n[Source: S1, S2, S3]\n\nTo get a definitive answer on eligibility criteria and the approval process, please consult the full Remote Work Policy or contact your HR representative.",
+        "reference": "No. Remote work is not an automatic entitlement. Eligibility depends on role requirements, business needs, information-security constraints, customer commitments, and manager approval."
+    },
+    {
+        "question_id": "Q007",
+        "user_input": "What details should be recorded when approving a regular remote-work arrangement?",
+        "retrieved_contexts": [
+            "The approval should record the arrangement type, expected remote and office days, start date, review date and any role-specific conditions.",
+            "The approval should record the arrangement type, expected remote and office days, start date, review date and any role-specific conditions.",
+            "The approval should record the arrangement type, expected remote and office days, start date, review date and any role-specific conditions.",
+            "Approved work location: the location accepted by the manager and, where required, HR or Security for the remote arrangement.\nCore availability: agreed periods when an employee is expected to be reachable for collaboration, meetings or operational responsibilities."
+        ],
+        "response": "Based on the retrieved context, the available company documents do not provide a comprehensive list of all details that must be recorded when approving a regular remote-work arrangement.\n\nHowever, the policy explicitly defines two key components that are part of the remote arrangement:\n\n*   **Approved work location:** This is the specific location accepted by the manager and, where required, HR or Security.\n*   **Core availability:** These are the agreed-upon periods when the employee is expected to be reachable for collaboration, meetings, or operational responsibilities.\n\n[Source: S1, S2, S3, S4]\n\nThe provided context does not specify other administrative details (such as start dates, duration, or equipment provisions) that are required to be recorded during the approval process.",
+        "reference": "The approval should record the arrangement type, expected remote and office days, start date, review date, and any role-specific conditions."
+    },
+    {
+        "question_id": "Q008",
+        "user_input": "What security practices must remote employees follow when working outside company premises?",
+        "retrieved_contexts": [
+            "Remote employees must follow the IT Security Policy, Data Classification and Handling Policy, and other applicable security requirements. Working outside company premises does not reduce the employee's responsibility to protect information. Connect through approved secure access methods, such as company VPN or managed zero-trust access, where required. Use multi-factor authentication and never share passwords, session tokens or authentication devices.",
+            "Remote employees must follow the IT Security Policy, Data Classification and Handling Policy, and other applicable security requirements. Working outside company premises does not reduce the employee's responsibility to protect information.",
+            "Remote employees must follow applicable code-of-conduct, anti-harassment and workplace policies.\nUse company-issued devices and approved software for company work unless an exception has been authorized.\nKeep devices physically secure and prevent access by family members, visitors or other unauthorized people.",
+            "Employees working remotely must use approved connectivity and protect information from unauthorized viewing or interception. Use the company VPN or other secure remote-access solution when required. Avoid conducting company work over public or untrusted Wi-Fi unless an approved secure connection is active. Do not bypass network"
+        ],
+        "response": "Based on the retrieved company policies, remote employees must adhere to the following security practices when working outside company premises:\n\n*   **Use Approved Connectivity:** You must use approved connectivity methods to protect company information from unauthorized viewing or interception [Source: S1, S2, S3, S4].\n*   **Secure Remote Access:** When required, you must use the company VPN or another approved secure remote-access solution [Source: S1, S2, S3, S4].\n*   **Avoid Untrusted Networks:** Do not conduct company work over public or untrusted Wi-Fi networks unless an approved secure connection is active [Source: S1, S2, S3, S4].\n*   **Network Integrity:** Do not bypass network security controls [Source: S1, S2, S3, S4].\n\nThese requirements are outlined in both the *Northstar Technologies Remote Work Policy* and the *Northstar Technologies IT Security Policy* [Source: S1, S4].",
+        "reference": "They must follow applicable security requirements, use approved secure access methods where required, use MFA, never share passwords or session tokens, keep systems updated, lock screens, avoid public or shared computers, store company files only in approved repositories, and promptly report suspected phishing, malware, credential exposure, device loss, or data disclosure."
+    },
+    {
+        "question_id": "Q009",
+        "user_input": "What conditions must an expense meet to be potentially reimbursable?",
+        "retrieved_contexts": [
+            "The following categories are examples of expenses that may be reimbursable when directly related to approved business activity and supported by required evidence.",
+            "The following categories are examples of expenses that may be reimbursable when directly related to approved business activity and supported by required evidence.",
+            "Expenses must be necessary for a legitimate business purpose, reasonable in amount and incurred for the company's benefit.",
+            "Any reimbursement for internet, phone, furniture, utilities or other remote-work expenses must follow the current expense policy and receive required approval. Do not assume that all home-office or connectivity costs are reimbursable.",
+            "Expenses must be necessary for a legitimate business purpose, reasonable in amount and incurred for the company's benefit."
+        ],
+        "response": "Based on the retrieved company policies, for an expense to be potentially reimbursable, it must meet the following three conditions:\n\n1.  **Legitimate Business Purpose:** The expense must be necessary for a legitimate business purpose.\n2.  **Reasonable Amount:** The expense must be reasonable in amount.\n3.  **Company Benefit:** The expense must be incurred for the company's benefit.\n\n[Source: S1, S2, S3, S4, S5]",
+        "reference": "An expense must be reasonable, necessary for a legitimate business purpose, incurred for the company's benefit, related to approved business activity, and supported by the required evidence. Required prior approval and budget or procurement rules must also be followed."
+    },
+    {
+        "question_id": "Q010",
+        "user_input": "What supporting documents should an employee provide with an expense claim?",
+        "retrieved_contexts": [
+            "Attach legible supporting documents and evidence of required prior approval.",
+            "Employees must provide accurate invoices and tax details where required.",
+            "Provide an itemized receipt or tax invoice showing supplier, date, description and amount.\nFor travel, include booking confirmations, tickets and proof of payment where relevant.\nFor client or team expenses, record the business purpose and attendees or group where appropriate.\nFor expenses in foreign currency, provide the original amount and currency; Finance determines the accepted conversion method.",
+            "If a receipt is unavailable, provide alternative evidence and a declaration explaining the circumstances; reimbursement is subject to Finance review."
+        ],
+        "response": "Based on the retrieved context, the available documents do not provide a comprehensive list of all supporting documents required for a standard expense claim.\n\nHowever, the context specifically addresses the scenario where a **receipt is unavailable**. In this case, an employee must provide:\n*   Alternative evidence\n*   A declaration explaining the circumstances\n\nPlease note that reimbursement in this specific scenario is subject to Finance review [Source: S1, S2, S3, S4].\n\nFor details on standard supporting documents (such as receipts, invoices, or approval forms) for general expense claims, the provided context does not contain sufficient information.",
+        "reference": "An itemized receipt or tax invoice should show the supplier, date, description, and amount. Travel claims may also require booking confirmations, tickets, and proof of payment. Client or team expenses should record the business purpose and attendees where appropriate."
+    }
+]

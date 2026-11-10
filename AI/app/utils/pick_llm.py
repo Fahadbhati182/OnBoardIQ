@@ -4,7 +4,7 @@ load_dotenv()
 from langchain_groq import ChatGroq
 
 
-def pick_llm(level: str, temperature: int = 0, max_retries: int = 0) -> ChatGroq:
+def pick_llm(level: str, temperature: int = 0, max_retries: int = 5) -> ChatGroq:
     """
         Select a Groq LLM based on question difficulty.
 
@@ -26,7 +26,7 @@ def pick_llm(level: str, temperature: int = 0, max_retries: int = 0) -> ChatGroq
             "Invalid level. Choose 'low', 'medium', or 'high'."
         )
 
-    return ChatGroq(model=models[level], temperature=temperature, max_retries=max_retries)
+    return ChatGroq(model=models[level], temperature=temperature, max_retries=max_retries, timeout=60)
 
 
 def get_context_window_size(model_name: str):

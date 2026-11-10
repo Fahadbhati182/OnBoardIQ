@@ -30,17 +30,29 @@ export interface SendChatResult {
   citations: ChatCitation[];
 }
 
+function normalizeMessage(message: ChatMessageRecord): ChatMessageRecord {
+  return {
+    ...message,
+    role: message.role.toLowerCase() as ChatMessageRecord["role"],
+  };
+}
+
 export const chatApi = {
   listSessions: () => apiRequest<ChatSession[]>("/chat/sessions"),
   createSession: () =>
     apiRequest<ChatSession>("/chat/sessions", { method: "POST", body: JSON.stringify({}) }),
   getMessages: (sessionId: string) =>
-    apiRequest<ChatMessageRecord[]>(`/chat/sessions/${sessionId}/messages`),
+    apiRequest<ChatMessageRecord[]>(`/chat/sessions/${sessionId}/messages`)
+      .then((messages) => messages.map(normalizeMessage)),
   sendMessage: (sessionId: string, message: string) =>
     apiRequest<SendChatResult>(`/chat/sessions/${sessionId}/messages`, {
       method: "POST",
       body: JSON.stringify({ message }),
-    }),
+    }).then((result) => ({
+      ...result,
+      userMessage: normalizeMessage(result.userMessage),
+      assistantMessage: normalizeMessage(result.assistantMessage),
+    })),
   renameSession: (sessionId: string, title: string) =>
     apiRequest<ChatSession>(`/chat/sessions/${sessionId}`, {
       method: "PATCH",

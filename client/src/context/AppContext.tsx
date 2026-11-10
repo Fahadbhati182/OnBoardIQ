@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   PageType,
   UserRole,
@@ -20,6 +21,7 @@ import {
 import { authApi, AuthUser } from "../services/authApi";
 import { documentApi } from "../services/documentApi";
 import { taskApi } from "../services/taskApi";
+import { pageFromPath, pagePaths } from "../router";
 
 interface AppContextType {
   isInitializing: boolean;
@@ -66,7 +68,10 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [currentPage, setCurrentPage] = useState<PageType>("login");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const initialPage = pageFromPath(location.pathname) || "login";
+  const [currentPage, setCurrentPageState] = useState<PageType>(initialPage);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState<UserRole>("employee");
@@ -94,6 +99,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
   const [activeDocModal, setActiveDocModal] = useState<DocumentItem | null>(
     null,
   );
+
+  useEffect(() => {
+    const routePage = pageFromPath(location.pathname);
+    if (routePage && routePage !== currentPage) {
+      setCurrentPageState(routePage);
+    }
+  }, [currentPage, location.pathname]);
 
   useEffect(() => {
     if (theme === "default") {
@@ -236,6 +248,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     setThemeState(nextTheme);
   };
 
+  const setCurrentPage = (page: PageType) => {
+    setCurrentPageState(page);
+    navigate(pagePaths[page]);
+  };
+
   const updateUserProfile = (updates: Partial<UserProfile>) => {
     setCurrentUser((prev) => ({ ...prev, ...updates }));
     addToast("Profile updated successfully!", "success");
@@ -261,7 +278,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     }));
     setCurrentUserRole(role);
     setIsAuthenticated(true);
-    setCurrentPage("dashboard");
+    const routePage = pageFromPath(location.pathname);
+    setCurrentPageState(
+      routePage && routePage !== "login" ? routePage : "dashboard",
+    );
   };
 
   const signOut = async () => {
@@ -270,7 +290,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       localStorage.removeItem("accessToken");
       setIsAuthenticated(false);
-      setCurrentPage("login");
+      setCurrentPageState("login");
+      navigate(pagePaths.login);
       setCurrentUserRole("employee");
     }
   };

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
@@ -20,9 +21,25 @@ import { CompanyInfoPage } from './pages/CompanyInfoPage';
 import { TaskManagementPage } from './pages/TaskManagementPage';
 import { TaskCreatePage } from './pages/TaskCreatePage';
 import { DocumentUploadPage } from './pages/DocumentUploadPage';
+import { pageFromPath, pagePaths } from './router';
 
 const AppContent: React.FC = () => {
   const { currentPage, isInitializing, isAuthenticated, currentUserRole } = useApp();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isInitializing) return;
+    if (!isAuthenticated && location.pathname !== pagePaths.login) {
+      navigate(pagePaths.login, { replace: true });
+    } else if (isAuthenticated && location.pathname === pagePaths.login) {
+      navigate(pagePaths.dashboard, { replace: true });
+    } else if (!pageFromPath(location.pathname)) {
+      navigate(isAuthenticated ? pagePaths.dashboard : pagePaths.login, {
+        replace: true,
+      });
+    }
+  }, [isAuthenticated, isInitializing, location.pathname, navigate]);
 
   if (isInitializing) {
     return (
@@ -80,18 +97,21 @@ const AppContent: React.FC = () => {
         <TopBar />
 
         <main className="flex-1 overflow-x-hidden">
-          {currentPage === 'dashboard' && <DashboardPage />}
-          {currentPage === 'chat' && <AIAssistantPage />}
-          {currentPage === 'tasks' && <MyTasksPage />}
-          {currentPage === 'task-admin' && <TaskManagementPage />}
-          {currentPage === 'task-create' && <TaskCreatePage />}
-          {currentPage === 'documents' && <DocumentsPage />}
-          {currentPage === 'document-upload' && <DocumentUploadPage />}
-          {currentPage === 'profile' && <ProfilePage />}
-          {currentPage === 'employees' && <EmployeesPage />}
-          {currentPage === 'hr-docs' && <HRAdminDocsPage />}
-          {currentPage === 'it-access' && <ITAdminAccessPage />}
-          {currentPage === 'company' && <CompanyInfoPage />}
+          <Routes>
+            <Route path={pagePaths.dashboard} element={<DashboardPage />} />
+            <Route path={pagePaths.chat} element={<AIAssistantPage />} />
+            <Route path={pagePaths.tasks} element={<MyTasksPage />} />
+            <Route path={pagePaths['task-admin']} element={<TaskManagementPage />} />
+            <Route path={pagePaths['task-create']} element={<TaskCreatePage />} />
+            <Route path={pagePaths.documents} element={<DocumentsPage />} />
+            <Route path={pagePaths['document-upload']} element={<DocumentUploadPage />} />
+            <Route path={pagePaths.profile} element={<ProfilePage />} />
+            <Route path={pagePaths.employees} element={<EmployeesPage />} />
+            <Route path={pagePaths['hr-docs']} element={<HRAdminDocsPage />} />
+            <Route path={pagePaths['it-access']} element={<ITAdminAccessPage />} />
+            <Route path={pagePaths.company} element={<CompanyInfoPage />} />
+            <Route path="*" element={<Navigate to={pagePaths.dashboard} replace />} />
+          </Routes>
         </main>
       </div>
 

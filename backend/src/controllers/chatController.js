@@ -210,6 +210,7 @@ export async function sendChatMessage(req, res) {
     // No assistant message is written when generation fails.
     throw error;
   }
+  console.log("AI service returned:", aiResult);
 
   const { data: assistantMessage, error: assistantMessageError } =
     await supabase

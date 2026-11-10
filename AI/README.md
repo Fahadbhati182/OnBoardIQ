@@ -1,10 +1,132 @@
-| Priority | Technique | What it improves |
-|---|---|---|
-| 1 | **Metadata Filtering** | Retrieves documents based on department, role, document type, and access permissions |
-| 2 | **Hybrid Search** | Combines semantic vector search with keyword-based search |
-| 3 | **Reranking** | Reorders retrieved chunks by their relevance to the query |
-| 4 | **Query Rewriting** | Transforms vague questions into better retrieval queries |
-| 5 | **Contextual Compression** | Removes irrelevant information from retrieved chunks |
-| 6 | **Parent-Child Retrieval** | Retrieves small chunks for matching while preserving broader context |
-| 7 | **Conversation-Aware Retrieval** | Uses conversation history to understand follow-up questions |
-| 8 | **RAG Evaluation** | Measures retrieval quality, answer relevance, and groundedness |
+//  {
+//    "id": "Q031",
+//    "question": "What source-control practices are required by the Engineering Standards guide?",
+//    "ground_truth": "Production code and engineering documentation must be stored in company-approved version-control repositories, using individual accounts and MFA where supported. Branches should be descriptive, commits focused and clearly messaged, and credentials, keys, tokens, personal data, build artifacts, and local environment files must not be committed.",
+//    "source_document": "Northstar_Technologies_Engineering_Standards(1).pdf",
+//    "source_page": 2,
+//    "required_access_scope": "ENGINEERING_ONLY",
+//    "required_department": "Engineering",
+//    "evaluation_persona": "ENGINEER",
+//    "question_type": "multi_fact"
+//  },
+//  {
+//    "id": "Q032",
+//    "question": "What is the Engineering Standards guide's approach to code quality and ownership?",
+//    "ground_truth": "Every engineer is responsible for the quality of the code they contribute. The guide emphasizes maintainability, reliability, security by design, collaboration, and continuous improvement.",
+//    "source_document": "Northstar_Technologies_Engineering_Standards(1).pdf",
+//    "source_page": 2,
+//    "required_access_scope": "ENGINEERING_ONLY",
+//    "required_department": "Engineering",
+//    "evaluation_persona": "ENGINEER",
+//    "question_type": "factual"
+//  },
+//  {
+//    "id": "Q033",
+//    "question": "Which HTTP methods are recommended for common REST API operations?",
+//    "ground_truth": "Use GET to retrieve resources, POST to create or initiate an operation, PUT to replace, PATCH to partially update, and DELETE to remove where permitted.",
+//    "source_document": "Northstar_Technologies_API_Development_Standards(1).pdf",
+//    "source_page": 3,
+//    "required_access_scope": "TEAM_ONLY",
+//    "required_department": "Backend Engineering",
+//    "evaluation_persona": "BACKEND_ENGINEER",
+//    "question_type": "list"
+//  },
+//  {
+//    "id": "Q034",
+//    "question": "What validation should an API perform at its boundary?",
+//    "ground_truth": "It should validate required fields, data types, formats, lengths, ranges, and allowed enum values at the API boundary.",
+//    "source_document": "Northstar_Technologies_API_Development_Standards(1).pdf",
+//    "source_page": 3,
+//    "required_access_scope": "TEAM_ONLY",
+//    "required_department": "Backend Engineering",
+//    "evaluation_persona": "BACKEND_ENGINEER",
+//    "question_type": "list"
+//  },
+//  {
+//    "id": "Q035",
+//    "question": "What should backend services avoid exposing to API clients?",
+//    "ground_truth": "They must not expose stack traces, SQL errors, internal hostnames, secrets, or sensitive implementation details. They should return stable machine-readable error codes with safe, human-readable messages.",
+//    "source_document": "Northstar_Technologies_Backend_Development_Guidelines(1).pdf",
+//    "source_page": 3,
+//    "required_access_scope": "TEAM_ONLY",
+//    "required_department": "Backend Engineering",
+//    "evaluation_persona": "BACKEND_ENGINEER",
+//    "question_type": "multi_fact"
+//  },
+//  {
+//    "id": "Q036",
+//    "question": "What does the Backend Development Guidelines document recommend about configuration and secrets?",
+//    "ground_truth": "Configuration should be kept separate from source code and required configuration should be validated during application startup. Generated build output, local secrets, temporary files, and machine-specific configuration should not be committed.",
+//    "source_document": "Northstar_Technologies_Backend_Development_Guidelines(1).pdf",
+//    "source_page": 2,
+//    "required_access_scope": "TEAM_ONLY",
+//    "required_department": "Backend Engineering",
+//    "evaluation_persona": "BACKEND_ENGINEER",
+//    "question_type": "multi_fact"
+//  },
+//  {
+//    "id": "Q037",
+//    "question": "What principles should guide frontend component design?",
+//    "ground_truth": "Components should have clear responsibilities and well-defined interfaces, use clear names and explicit props and types, and remain small enough to understand, test, and review. Shared components or hooks should be extracted when reuse is justified.",
+//    "source_document": "Northstar_Technologies_Frontend_Development_Guidelines(1).pdf",
+//    "source_page": 3,
+//    "required_access_scope": "TEAM_ONLY",
+//    "required_department": "Frontend Engineering",
+//    "evaluation_persona": "FRONTEND_ENGINEER",
+//    "question_type": "multi_fact"
+//  },
+//  {
+//    "id": "Q038",
+//    "question": "Where should authorization be enforced according to the Frontend Development Guidelines?",
+//    "ground_truth": "Browser input and client-side state must be treated as untrusted, and authorization must be enforced on the server.",
+//    "source_document": "Northstar_Technologies_Frontend_Development_Guidelines(1).pdf",
+//    "source_page": 2,
+//    "required_access_scope": "TEAM_ONLY",
+//    "required_department": "Frontend Engineering",
+//    "evaluation_persona": "FRONTEND_ENGINEER",
+//    "question_type": "factual"
+//  },
+//  {
+//    "id": "Q039",
+//    "question": "Who owns the employee offboarding process and which teams support it?",
+//    "ground_truth": "Human Resources is the process owner. Supporting participants include IT Operations, the employee's manager, Finance, and relevant system owners.",
+//    "source_document": "Northstar_Technologies_Employee_Offboarding_SOP(1).pdf",
+//    "source_page": 1,
+//    "required_access_scope": "ADMIN_ONLY",
+//    "required_department": "Human Resources",
+//    "evaluation_persona": "HR_ADMIN",
+//    "question_type": "factual"
+//  },
+//  {
+//    "id": "Q040",
+//    "question": "What are the main intended outcomes of the employee offboarding process?",
+//    "ground_truth": "The intended outcomes are a documented separation record, orderly knowledge and work handover, recovery or reassignment of company assets, timely access revocation, appropriate data retention, and closure of relevant HR and payroll activities.",
+//    "source_document": "Northstar_Technologies_Employee_Offboarding_SOP(1).pdf",
+//    "source_page": 2,
+//    "required_access_scope": "ADMIN_ONLY",
+//    "required_department": "Human Resources",
+//    "evaluation_persona": "HR_ADMIN",
+//    "question_type": "multi_fact"
+//  },
+//  {
+//    "id": "Q041",
+//    "question": "What are the main stages in Northstar's recruitment process, and who owns the workforce request?",
+//    "ground_truth": "The process stages are workforce request, approval, role definition, sourcing, screening, assessment, selection, verification, offer, and handover. The Hiring Manager owns the workforce request and submits the role justification and hiring requisition.",
+//    "source_document": "Northstar_Technologies_Employee_Hiring_and_Recruitment_SOP(1).pdf",
+//    "source_page": 3,
+//    "required_access_scope": "ADMIN_ONLY",
+//    "required_department": "Human Resources",
+//    "evaluation_persona": "HR_ADMIN",
+//    "question_type": "multi_hop"
+//  },
+//  {
+//    "id": "Q042",
+//    "question": "What is the illustrative performance review cadence described in the Employee Performance Review Policy?",
+//    "ground_truth": "The illustrative framework uses a regular annual review cycle supported by quarterly check-ins, approximately every three months. It also includes goal setting at the start of the review period, self-assessment before the formal review meeting, manager assessment during the formal review window, calibration and HR review, a review discussion, and follow-up during the next review period.",
+//    "source_document": "Northstar_Technologies_Employee_Performance_Review_Policy(1).pdf",
+//    "source_page": 2,
+//    "required_access_scope": "ADMIN_ONLY",
+//    "required_department": "Human Resources",
+//    "evaluation_persona": "HR_ADMIN",
+//    "question_type": "multi_fact"
+//  }

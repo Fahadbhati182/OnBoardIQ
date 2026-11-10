@@ -1,0 +1,162 @@
+{
+    "evaluation_timestamp": "2026-11-09T10:55:26.815940+00:00",
+    "total_samples": 10,
+    "completed": true,
+    "overall_scores": {
+        "faithfulness": 0.65,
+        "answer_relevancy": 0.6981105462994717,
+        "context_precision": 0.9999999999626666,
+        "context_recall": 0.9333333333333333,
+        "answer_correctness": 0.5357066462189326
+    },
+    "results": [
+        {
+            "question_id": "Q001",
+            "user_input": "What are the sample annual, casual, and sick leave entitlements for an eligible full-time employee?",
+            "scores": {
+                "faithfulness": 0.3333333333333333,
+                "answer_relevancy": 0.7297150504731295,
+                "context_precision": 0.9999999999666667,
+                "context_recall": 1.0,
+                "answer_correctness": 0.39516255447840487
+            },
+            "errors": {}
+        },
+        {
+            "question_id": "Q002",
+            "user_input": "What are the standard working hours for Mumbai-based office teams?",
+            "scores": {
+                "faithfulness": 1.0,
+                "answer_relevancy": 0.9999999999999449,
+                "context_precision": 0.99999999998,
+                "context_recall": 1.0,
+                "answer_correctness": 0.5718721475673694
+            },
+            "errors": {}
+        },
+        {
+            "question_id": "Q003",
+            "user_input": "How far in advance should planned leave be requested?",
+            "scores": {
+                "faithfulness": 1.0,
+                "answer_relevancy": 0.7659857064219652,
+                "context_precision": 0.99999999995,
+                "context_recall": 0.6666666666666666,
+                "answer_correctness": 0.8658887939268508
+            },
+            "errors": {}
+        },
+        {
+            "question_id": "Q004",
+            "user_input": "How is Annual/Earned Leave accrued during the year?",
+            "scores": {
+                "faithfulness": 0.16666666666666666,
+                "answer_relevancy": 0.0,
+                "context_precision": 0.99999999995,
+                "context_recall": 1.0,
+                "answer_correctness": 0.1844520809262393
+            },
+            "errors": {}
+        },
+        {
+            "question_id": "Q005",
+            "user_input": "What should an employee do when illness or an emergency prevents them from working?",
+            "scores": {
+                "faithfulness": 1.0,
+                "answer_relevancy": 0.8882035972652775,
+                "context_precision": 0.9999999999666667,
+                "context_recall": 1.0,
+                "answer_correctness": 0.6611576541957991
+            },
+            "errors": {}
+        },
+        {
+            "question_id": "Q006",
+            "user_input": "Does an employee automatically have the right to work remotely?",
+            "scores": {
+                "faithfulness": 0.4,
+                "answer_relevancy": 0.8047589236365126,
+                "context_precision": null,
+                "context_recall": null,
+                "answer_correctness": null
+            },
+            "errors": {
+                "context_precision": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 198518, Requested 2096. Please try again in 4m25.248s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+                "context_recall": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 198518, Requested 2701. Please try again in 8m46.607999999s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+                "answer_correctness": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199031, Requested 2093. Please try again in 8m5.568s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}"
+            }
+        },
+        {
+            "question_id": "Q007",
+            "user_input": "What details should be recorded when approving a regular remote-work arrangement?",
+            "scores": {
+                "faithfulness": null,
+                "answer_relevancy": null,
+                "context_precision": null,
+                "context_recall": null,
+                "answer_correctness": null
+            },
+            "errors": {
+                "faithfulness": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199031, Requested 1692. Please try again in 5m12.336s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+                "answer_relevancy": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199031, Requested 1752. Please try again in 5m38.256s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+                "context_precision": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199031, Requested 2142. Please try again in 8m26.736s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+                "context_recall": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199031, Requested 2701. Please try again in 12m28.223999999s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+                "answer_correctness": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199031, Requested 1636. Please try again in 4m48.144s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}"
+            }
+        },
+        {
+            "question_id": "Q008",
+            "user_input": "What security practices must remote employees follow when working outside company premises?",
+            "scores": {
+                "faithfulness": null,
+                "answer_relevancy": null,
+                "context_precision": null,
+                "context_recall": null,
+                "answer_correctness": null
+            },
+            "errors": {
+                "faithfulness": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199031, Requested 1690. Please try again in 5m11.472s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+                "answer_relevancy": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199031, Requested 1862. Please try again in 6m25.776s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+                "context_precision": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199031, Requested 2171. Please try again in 8m39.264s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+                "context_recall": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199031, Requested 3422. Please try again in 17m39.695999999s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+                "answer_correctness": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199031, Requested 1746. Please try again in 5m35.664s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}"
+            }
+        },
+        {
+            "question_id": "Q009",
+            "user_input": "What conditions must an expense meet to be potentially reimbursable?",
+            "scores": {
+                "faithfulness": null,
+                "answer_relevancy": null,
+                "context_precision": null,
+                "context_recall": null,
+                "answer_correctness": null
+            },
+            "errors": {
+                "faithfulness": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199030, Requested 1579. Please try again in 4m23.088s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+                "answer_relevancy": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199030, Requested 1695. Please try again in 5m13.2s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+                "context_precision": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199030, Requested 2106. Please try again in 8m10.752s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+                "context_recall": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199030, Requested 2734. Please try again in 12m42.048s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+                "answer_correctness": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199030, Requested 2167. Please try again in 8m37.104s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}"
+            }
+        },
+        {
+            "question_id": "Q010",
+            "user_input": "What supporting documents should an employee provide with an expense claim?",
+            "scores": {
+                "faithfulness": null,
+                "answer_relevancy": null,
+                "context_precision": null,
+                "context_recall": null,
+                "answer_correctness": null
+            },
+            "errors": {
+                "faithfulness": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199030, Requested 1606. Please try again in 4m34.752s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+                "answer_relevancy": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199030, Requested 2311. Please try again in 9m39.312s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+                "context_precision": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199030, Requested 2150. Please try again in 8m29.76s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+                "context_recall": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199030, Requested 2776. Please try again in 13m0.192s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}",
+                "answer_correctness": "Error code: 429 - {'error': {'message': 'Rate limit reached for model `openai/gpt-oss-120b` in organization `org_01kyn08magfysvtwpvbyq2fkbs` service tier `on_demand` on tokens per day (TPD): Limit 200000, Used 199030, Requested 1662. Please try again in 4m58.944s. Need more tokens? Upgrade to Dev Tier today at https://console.groq.com/settings/billing', 'type': 'tokens', 'code': 'rate_limit_exceeded'}}"
+            }
+        }
+    ]
+}

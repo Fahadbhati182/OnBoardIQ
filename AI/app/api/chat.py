@@ -15,6 +15,7 @@ from app.agent.state import AgentState
 router = APIRouter()
 
 
+
 class ChatHistoryMessage(BaseModel):
     role: Literal["user", "assistant"]
     content: str = Field(min_length=1, max_length=10000)
@@ -49,6 +50,8 @@ def _require_service_token(authorization: str | None) -> None:
     provided = authorization[7:] if authorization and authorization.startswith("Bearer ") else None
     if not expected or not provided or not hmac.compare_digest(provided, expected):
         raise HTTPException(status_code=401, detail="Service authentication required")
+
+
 
 
 

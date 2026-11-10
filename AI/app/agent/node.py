@@ -212,90 +212,160 @@ def query_analyzer(state: AgentState) -> AgentState:
 
     state["query_analysis"] = result.model_dump()
 
+    print("\n========== QUERY ANALYZER ==========")
+    print("Original Query:", state["query"])
+    print("Contextualized Query:", state.get("contextualized_query"))
+    print("Analysis:", state.get("query_analysis"))
+    print("====================================\n")
+
     return state
 
 def hybrid_retriever(state: AgentState) -> AgentState:
-    """
-    Retrieves relevant documents from Qdrant using:
 
-    1. Metadata filtering
-    2. Dense retrieval
-    3. Sparse retrieval
-    4. RRF fusion
-    """
+    print("\n========== HYBRID RETRIEVER ==========")
 
-    # Check whether retrieval is required
     query_analysis = state["query_analysis"]
 
     if not query_analysis["requires_retrieval"]:
-        return {
-            "retrieved_documents": []
-        }
+        return {"retrieved_documents": []}
 
     access_scope = state["access_scope"]
     team_id = state.get("team_id")
     user_query = state["contextualized_query"]
 
+    retrieved_points = hybrid_search(
+        user_query,
+        access_scope,
+        team_id
+    )
 
-    #  Perform hybrid search
-    retrieved_points = hybrid_search(user_query,access_scope,team_id)
+    print("Retrieved Points:", len(retrieved_points))
 
-    state['retrieved_documents'] = retrieved_points
+    # Convert Qdrant ScoredPoint objects into dictionaries
+
+    for i, point in enumerate(retrieved_points, start=1):
+        print(f"\nRAW QDRANT PAYLOAD {i}:")
+        print(point.payload)
+
+    documents = []
+
+    for point in retrieved_points:
+        payload = point.payload or {}
+
+        # Preserve all Qdrant metadata fields
+        metadata = {
+            "document_id": payload.get("document_id"),
+            "version_id": payload.get("version_id"),
+            "title": payload.get("title"),
+            "file_name": payload.get("file_name"),
+            "document_type": payload.get("document_type"),
+            "page_number": payload.get("page_number"),
+            "page": payload.get("page"),
+            "access_scope": payload.get("access_scope"),
+            "team_id": payload.get("team_id"),
+            "version_number": payload.get("version_number")
+        }
+
+        document = {
+            "id": str(point.id),
+            "text": payload.get("text", ""),
+            "metadata": metadata,
+            "source": payload.get("source", "Unknown"),
+            "score": point.score
+        }
+
+        documents.append(document)
+
+    state["retrieved_documents"] = documents
+
+    print("Successfully stored retrieved documents:", len(documents))
+
     return state
-
 
 
 def reranker(state: AgentState) -> AgentState:
     """  It ranks the retrieved chunks against the standalone query. """
+
     user_query = state["contextualized_query"]
     retrieved_documents = state["retrieved_documents"]
+
+    print("\n========== RERANKER ==========")
+    print("Input Documents:", len(retrieved_documents))
 
     reranked_documents:list = rerank_documents(user_query,retrieved_documents)
     state['reranked_documents'] = reranked_documents
 
+    print("Output Documents:", len(reranked_documents))
+
+    for i, doc in enumerate(reranked_documents):
+        print(f"\nReranked Document {i + 1}")
+        print("Text:", doc.get("text", "")[:500])
+        print("Score:", doc.get("score"))
+
+    print("==============================\n")
+
+
     return state
 
 
-def contextual_compressor(state:AgentState)->AgentState:
-    """ Its responsibility is to remove irrelevant information from the retrieved chunks while preserving facts necessary to answer the question. """
+
+def contextual_compressor(state: AgentState) -> AgentState:
+
     user_query = state["contextualized_query"]
     reranked_documents = state["reranked_documents"]
 
-    compressed_document = compress_search_results(user_query,reranked_documents)
+    print("\n========== CONTEXT COMPRESSOR ==========")
+    print("Input Documents:", len(reranked_documents))
 
+    compressed_documents = compress_search_results(
+        user_query,
+        reranked_documents
+    )
+
+    print("Output Documents:", len(compressed_documents))
 
     compressed_context = "\n\n".join(
         f"Source: {document.get('source', 'Unknown')}\n"
         f"Content: {document['text']}"
-        for document in compressed_document
+        for document in compressed_documents
     )
 
-    state['compressed_document'] = compressed_document
-    state['compressed_context'] = compressed_context
+    state["compressed_documents"] = compressed_documents
+    state["compressed_context"] = compressed_context
+
+    print("Compressed Context Length:", len(compressed_context))
+    print("Compressed Context:\n", compressed_context[:3000])
+
+    print("========================================\n")
 
     return state
 
 
-def answer_generation(state: AgentState) -> AgentState:
-    """
-    Generates a grounded answer using compressed
-    documents and conversation history.
-    """
 
-    compressed_document = state.get('compressed_document',[])
+def answer_generation(state: AgentState) -> AgentState:
+
+    print("\n========== ANSWER GENERATION ==========")
+
+    compressed_document = state.get("compressed_documents", [])
+
+    print("Query:", state["contextualized_query"])
+    print("Documents:", len(compressed_document))
 
     result = generate_answer(
         query=state["contextualized_query"],
         compressed_documents=compressed_document,
-        chat_history=state.get(
-            "conversation_history", []
-        )
+        chat_history=state.get("conversation_history", [])
     )
 
-    state['answer'] = result["answer"]
-    state["citations"]  = result["citations"]
-    return state
+    print("Generated Answer:", result.get("answer"))
+    print("Citations:", result.get("citations"))
 
+    state["answer"] = result["answer"]
+    state["citations"] = result["citations"]
+
+    print("=======================================\n")
+
+    return state
 
 def direct_response(state: AgentState) -> dict:
     """

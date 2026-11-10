@@ -20,3 +20,5 @@ qdrant-client
 python-dotenv
 kafka-python
 pypdf
+ragas
+datasets
