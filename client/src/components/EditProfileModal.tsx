@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { X, UserCheck, Save } from 'lucide-react';
+import { X, UserCheck, Save, Loader2 } from 'lucide-react';
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -8,32 +8,31 @@ interface EditProfileModalProps {
 }
 
 export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose }) => {
-  const { currentUser, updateUserProfile } = useApp();
+  const { currentUser, updateUserProfile, addToast } = useApp();
 
   const [name, setName] = useState(currentUser.name);
-  const [jobTitle, setJobTitle] = useState(currentUser.jobTitle);
-  const [department, setDepartment] = useState(currentUser.department);
-  const [phone, setPhone] = useState(currentUser.phone);
-  const [location, setLocation] = useState(currentUser.location);
+  const [email, setEmail] = useState(currentUser.email);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setName(currentUser.name);
+    setEmail(currentUser.email);
+  }, [currentUser.email, currentUser.name, isOpen]);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateUserProfile({
-      name,
-      jobTitle,
-      department,
-      phone,
-      location,
-      initials: name
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2),
-    });
-    onClose();
+    setSaving(true);
+    try {
+      await updateUserProfile({ name, email });
+      onClose();
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Unable to update profile', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -65,7 +64,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
             </div>
             <div>
               <h3 style={{ fontSize: '17px', color: '#f8fafc' }}>Edit Profile Information</h3>
-              <p style={{ fontSize: '12px', color: '#8da498' }}>Update your contact and directory details</p>
+              <p style={{ fontSize: '12px', color: '#8da498' }}>Update your required account details</p>
             </div>
           </div>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
@@ -73,41 +72,24 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onCl
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={(event) => void handleSubmit(event)} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
             <label style={labelStyle}>Full Name</label>
-            <input type="text" required value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
+            <input type="text" required maxLength={150} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div>
-              <label style={labelStyle}>Job Title</label>
-              <input type="text" required value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Department</label>
-              <input type="text" required value={department} onChange={(e) => setDepartment(e.target.value)} style={inputStyle} />
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div>
-              <label style={labelStyle}>Phone Number</label>
-              <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Office Location</label>
-              <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} style={inputStyle} />
-            </div>
+          <div>
+            <label style={labelStyle}>Email Address</label>
+            <input type="email" required maxLength={255} autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} style={inputStyle} />
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-            <button type="button" onClick={onClose} className="btn-secondary">
+            <button type="button" onClick={onClose} className="btn-secondary" disabled={saving}>
               Cancel
             </button>
-            <button type="submit" className="btn-primary">
-              <Save size={15} />
-              <span>Save Changes</span>
+            <button type="submit" className="btn-primary" disabled={saving}>
+              {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+              <span>{saving ? 'Saving...' : 'Save Changes'}</span>
             </button>
           </div>
         </form>

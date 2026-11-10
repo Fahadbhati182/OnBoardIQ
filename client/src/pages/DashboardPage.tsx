@@ -1,21 +1,265 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import {
+  Activity,
+  ArrowRight,
+  BookOpen,
+  CalendarDays,
+  Check,
   CheckCircle2,
   Clock,
   AlertCircle,
+  CloudUpload,
   FileText,
+  ListChecks,
   Laptop,
-  BookOpen,
+  Plus,
   Sparkles,
-  ArrowRight,
+  UserPlus,
+  Users,
   ClipboardList,
-  Check,
   ChevronRight,
-  Shield,
 } from 'lucide-react';
+import {
+  AdminDashboardSummary,
+  TaskDefinition,
+  taskApi,
+} from '../services/taskApi';
 
 export const DashboardPage: React.FC = () => {
+  const { currentUserRole } = useApp();
+
+  return currentUserRole === 'engineering_admin'
+    ? <AdminDashboard />
+    : <EmployeeDashboard />;
+};
+
+const AdminDashboard: React.FC = () => {
+  const { currentUser, setCurrentPage } = useApp();
+  const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
+  const [activeTasks, setActiveTasks] = useState<TaskDefinition[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError('');
+    Promise.all([
+      taskApi.getAdminDashboardSummary(),
+      taskApi.listDefinitions('?active=true'),
+    ])
+      .then(([nextSummary, taskDefinitions]) => {
+        if (!active) return;
+        setSummary(nextSummary);
+        setActiveTasks(taskDefinitions.slice(0, 5));
+      })
+      .catch((loadError: unknown) => {
+        if (!active) return;
+        const message = loadError instanceof Error
+          ? loadError.message
+          : 'Unable to load dashboard data';
+        setError(message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [reloadKey]);
+
+  const completed = summary?.completedAssignments ?? 0;
+  const inProgress = summary?.inProgressAssignments ?? 0;
+  const pending = summary?.pendingAssignments ?? 0;
+  const assignmentTotal = summary?.totalAssignments ?? 0;
+  const completedPercent = assignmentTotal
+    ? Math.round((completed / assignmentTotal) * 100)
+    : 0;
+  const inProgressPercent = assignmentTotal
+    ? Math.round((inProgress / assignmentTotal) * 100)
+    : 0;
+  const greeting = new Date().getHours() < 12
+    ? 'Good morning'
+    : new Date().getHours() < 18
+      ? 'Good afternoon'
+      : 'Good evening';
+
+  const metricValue = (value: number | undefined) =>
+    loading || !summary ? '—' : (value ?? 0).toLocaleString();
+
+  return (
+    <div className="page-container admin-dashboard">
+      <div className="admin-dashboard-heading">
+        <div>
+          <span className="admin-dashboard-eyebrow">Admin dashboard</span>
+          <h1>{greeting}, {currentUser.name.split(' ')[0]}!</h1>
+          <p>Manage employees, onboarding tasks, and company documents.</p>
+        </div>
+        <div className="admin-dashboard-date">
+          <CalendarDays size={17} />
+          {new Intl.DateTimeFormat(undefined, {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          }).format(new Date())}
+        </div>
+      </div>
+
+      {error && (
+        <div className="admin-dashboard-error" role="alert">
+          <span>{error}</span>
+          <button type="button" onClick={() => setReloadKey((key) => key + 1)}>
+            Retry
+          </button>
+        </div>
+      )}
+
+      <div className="admin-dashboard-metrics">
+        <AdminMetric icon={<Users size={20} />} value={metricValue(summary?.totalEmployees)} label="Total employees" detail={`${metricValue(summary?.activeEmployees)} active`} tone="green" />
+        <AdminMetric icon={<ListChecks size={20} />} value={metricValue(summary?.activeTasks)} label="Active tasks" detail="Onboarding task definitions" tone="gold" />
+        <AdminMetric icon={<Activity size={20} />} value={metricValue(summary?.inProgressAssignments)} label="In progress" detail="Task assignments" tone="blue" />
+        <AdminMetric icon={<ClipboardList size={20} />} value={metricValue(summary?.pendingAssignments)} label="Pending tasks" detail="Not started" tone="muted" />
+      </div>
+
+      <div className="admin-dashboard-grid">
+        <section className="admin-dashboard-card admin-progress-card">
+          <div className="admin-dashboard-card-heading">
+            <h2><CheckCircle2 size={18} /> Onboarding progress</h2>
+          </div>
+          {loading ? (
+            <div className="admin-dashboard-loading">Loading assignment progress…</div>
+          ) : !summary ? (
+            <div className="admin-dashboard-empty">Assignment progress is unavailable.</div>
+          ) : (
+            <div className="admin-progress-content">
+              <div
+                className="admin-progress-donut"
+                style={{
+                  background: assignmentTotal
+                    ? `conic-gradient(#42e89c 0% ${completedPercent}%, #f0cb57 ${completedPercent}% ${completedPercent + inProgressPercent}%, #9aabb1 ${completedPercent + inProgressPercent}% 100%)`
+                    : 'conic-gradient(#28483b 0% 100%)',
+                }}
+              >
+                <div>
+                  <strong>{completedPercent}%</strong>
+                  <span>Completed</span>
+                </div>
+              </div>
+              <div className="admin-progress-legend">
+                <ProgressLegend color="completed" label="Completed" value={completed} />
+                <ProgressLegend color="in-progress" label="In progress" value={inProgress} />
+                <ProgressLegend color="pending" label="Not started" value={pending} />
+                <small>{assignmentTotal.toLocaleString()} total assignments</small>
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section className="admin-dashboard-card admin-task-list-card">
+          <div className="admin-dashboard-card-heading">
+            <h2><FileText size={18} /> Active onboarding tasks</h2>
+            <button type="button" onClick={() => setCurrentPage('task-admin')}>
+              View all <ChevronRight size={14} />
+            </button>
+          </div>
+          {loading ? (
+            <div className="admin-dashboard-loading">Loading active tasks…</div>
+          ) : error ? (
+            <div className="admin-dashboard-empty">Active tasks are unavailable.</div>
+          ) : activeTasks.length ? (
+            <div className="admin-dashboard-task-list">
+              {activeTasks.map((task) => (
+                <div className="admin-dashboard-task" key={task.id}>
+                  <span className="admin-dashboard-task-icon"><Check size={15} /></span>
+                  <span className="admin-dashboard-task-copy">
+                    <strong>{task.title}</strong>
+                    <small>{task.estimatedMinutes} min</small>
+                  </span>
+                  <em className={task.required ? 'required' : 'optional'}>
+                    {task.required ? 'Required' : 'Optional'}
+                  </em>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="admin-dashboard-empty">No active onboarding tasks.</div>
+          )}
+        </section>
+
+        <section className="admin-dashboard-card admin-quick-actions">
+          <div className="admin-dashboard-card-heading">
+            <h2><Sparkles size={18} /> Quick actions</h2>
+          </div>
+          <div className="admin-quick-action-grid">
+            <QuickAction icon={<Plus size={19} />} label="Assign tasks" onClick={() => setCurrentPage('task-admin')} />
+            <QuickAction icon={<UserPlus size={19} />} label="Add employee" onClick={() => setCurrentPage('employees')} />
+            <QuickAction icon={<CloudUpload size={19} />} label="Upload document" onClick={() => setCurrentPage('document-upload')} />
+            <QuickAction icon={<FileText size={19} />} label="View documents" onClick={() => setCurrentPage('documents')} />
+          </div>
+        </section>
+      </div>
+
+      <div className="admin-dashboard-help">
+        <div>
+          <BookOpen size={20} />
+          <span>
+            <strong>Company documents</strong>
+            <small>Open the document library for published company resources.</small>
+          </span>
+        </div>
+        <button type="button" onClick={() => setCurrentPage('documents')}>
+          Open documents <ChevronRight size={15} />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const AdminMetric: React.FC<{
+  icon: React.ReactNode;
+  value: string;
+  label: string;
+  detail: string;
+  tone: string;
+}> = ({ icon, value, label, detail, tone }) => (
+  <div className={`admin-dashboard-metric ${tone}`}>
+    <span className="admin-dashboard-metric-icon">{icon}</span>
+    <span className="admin-dashboard-metric-copy">
+      <strong>{value}</strong>
+      <small>{label}</small>
+      <em>{detail}</em>
+    </span>
+  </div>
+);
+
+const ProgressLegend: React.FC<{
+  color: string;
+  label: string;
+  value: number;
+}> = ({ color, label, value }) => (
+  <div className="admin-progress-legend-item">
+    <i className={color} />
+    <span>{label}</span>
+    <strong>{value.toLocaleString()}</strong>
+  </div>
+);
+
+const QuickAction: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}> = ({ icon, label, onClick }) => (
+  <button type="button" onClick={onClick}>
+    {icon}
+    <span>{label}</span>
+  </button>
+);
+
+const EmployeeDashboard: React.FC = () => {
   const { currentUser, tasks, setCurrentPage, setActiveTaskModal, setActiveDocModal, documents } = useApp();
 
   const totalTasks = tasks.length;
@@ -37,7 +281,7 @@ export const DashboardPage: React.FC = () => {
             Good Morning, {currentUser.name.split(' ')[0]}! 👋
           </h1>
           <p style={styles.greetingSubtitle}>
-            Welcome to ISS! Let's make your journey amazing.
+            Welcome to Northstar Technologies Pvt. Ltd.! Let's make your journey amazing.
           </p>
         </div>
 

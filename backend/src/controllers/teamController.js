@@ -25,10 +25,90 @@ async function findTeam(teamId) {
 export async function listTeams(_req, res) {
   const { data, error } = await supabase
     .from("teams")
-    .select("id, name, description")
+    .select("id, name, description, created_at, updated_at")
     .order("name", { ascending: true });
   if (error) throw new ApiError(500, "An unexpected database error occurred");
   res.json({ success: true, data: data || [] });
+}
+
+function parseTeamInput(body, partial = false) {
+  const input = {};
+  if (!partial || body.name !== undefined) {
+    if (typeof body.name !== "string" || !body.name.trim()) {
+      throw new ApiError(400, "Team name is required");
+    }
+    const name = body.name.trim();
+    if (name.length > 100) {
+      throw new ApiError(400, "Team name must be 100 characters or fewer");
+    }
+    input.name = name;
+  }
+  if (!partial || body.description !== undefined) {
+    if (
+      body.description !== undefined &&
+      body.description !== null &&
+      typeof body.description !== "string"
+    ) {
+      throw new ApiError(400, "Team description must be a string");
+    }
+    const description = body.description?.trim() || null;
+    if (description && description.length > 10000) {
+      throw new ApiError(400, "Team description is too long");
+    }
+    input.description = description;
+  }
+  if (partial && Object.keys(input).length === 0) {
+    throw new ApiError(400, "Provide a team name or description to update");
+  }
+  return input;
+}
+
+function handleTeamWriteError(error) {
+  if (error.code === "23505") {
+    throw new ApiError(409, "A team with this name already exists");
+  }
+  if (error.code === "23503") {
+    throw new ApiError(409, "Team is still referenced by other records");
+  }
+  throw new ApiError(500, "An unexpected database error occurred");
+}
+
+export async function createTeam(req, res) {
+  const input = parseTeamInput(req.body ?? {});
+  const { data, error } = await supabase
+    .from("teams")
+    .insert(input)
+    .select("id, name, description, created_at, updated_at")
+    .single();
+  if (error) handleTeamWriteError(error);
+  res.status(201).json({ success: true, data });
+}
+
+export async function updateTeam(req, res) {
+  const teamId = uuid(req.params.teamId, "teamId");
+  const input = parseTeamInput(req.body ?? {}, true);
+  const { data, error } = await supabase
+    .from("teams")
+    .update({ ...input, updated_at: new Date().toISOString() })
+    .eq("id", teamId)
+    .select("id, name, description, created_at, updated_at")
+    .maybeSingle();
+  if (error) handleTeamWriteError(error);
+  if (!data) throw new ApiError(404, "Team was not found");
+  res.json({ success: true, data });
+}
+
+export async function deleteTeam(req, res) {
+  const teamId = uuid(req.params.teamId, "teamId");
+  const { data, error } = await supabase
+    .from("teams")
+    .delete()
+    .eq("id", teamId)
+    .select("id")
+    .maybeSingle();
+  if (error) handleTeamWriteError(error);
+  if (!data) throw new ApiError(404, "Team was not found");
+  res.json({ success: true, data: { id: data.id } });
 }
 
 export async function assignEngineerToTeam(req, res) {

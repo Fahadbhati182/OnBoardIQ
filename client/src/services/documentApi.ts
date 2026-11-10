@@ -37,6 +37,10 @@ export const documentApi = {
     apiRequest<ApiDocument[]>(
       `/documents${search ? `?search=${encodeURIComponent(search)}` : ""}`,
     ),
+  listForEmployee: (search = "") =>
+    apiRequest<ApiDocument[]>(
+      `/documents/employee${search ? `?search=${encodeURIComponent(search)}` : ""}`,
+    ),
   get: (id: string) => apiRequest<ApiDocument>(`/documents/${id}`),
   download: async (id: string, fileName: string) => {
     const token = localStorage.getItem("accessToken");

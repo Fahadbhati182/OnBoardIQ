@@ -16,6 +16,7 @@ const emptyForm: TaskDefinitionInput & { departmentId: string } = {
 
 const SkeletonRow: React.FC = () => (
   <tr className="animate-pulse">
+    <td className="p-4"><div className="h-4 bg-emerald-900/40 rounded w-4" /></td>
     <td className="p-4"><div className="h-4 bg-emerald-900/40 rounded w-52 mb-2" /><div className="h-3 bg-emerald-900/25 rounded w-72" /></td>
     <td className="p-4"><div className="h-3 bg-emerald-900/30 rounded w-24" /></td>
     <td className="p-4"><div className="h-3 bg-emerald-900/30 rounded w-14" /></td>
@@ -43,7 +44,6 @@ export const TaskManagementPage: React.FC = () => {
   const [tasks, setTasks] = useState<TaskDefinition[]>([]);
   const [employees, setEmployees] = useState<EmployeeSummary[]>([]);
   const [search, setSearch] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'required' | 'optional'>('all');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -54,10 +54,8 @@ export const TaskManagementPage: React.FC = () => {
   const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
   const [selected, setSelected] = useState<TaskDefinition | null>(null);
   const [employeeId, setEmployeeId] = useState('');
-  const [bulkEmployeeIds, setBulkEmployeeIds] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [assigningOne, setAssigningOne] = useState(false);
-  const [assigningBulk, setAssigningBulk] = useState(false);
   const [progressEmployee, setProgressEmployee] = useState('');
   const [progress, setProgress] = useState<TaskProgress | null>(null);
   const [employeeTasks, setEmployeeTasks] = useState<AssignedTask[]>([]);
@@ -78,17 +76,11 @@ export const TaskManagementPage: React.FC = () => {
       .finally(() => setLoadingEmployees(false));
   }, []);
 
-  const departments = useMemo(
-    () => [...new Set(tasks.map((task) => task.department?.name).filter(Boolean))] as string[],
-    [tasks],
-  );
-
   const filteredTasks = useMemo(() => tasks.filter((task) => {
     const text = `${task.title} ${task.description || ''}`.toLowerCase();
     return text.includes(search.toLowerCase())
-      && (!departmentFilter || task.department?.name === departmentFilter)
       && (typeFilter === 'all' || (typeFilter === 'required' ? task.required : !task.required));
-  }), [tasks, search, departmentFilter, typeFilter]);
+  }), [tasks, search, typeFilter]);
 
   const pageSize = 5;
   const pageCount = Math.max(1, Math.ceil(filteredTasks.length / pageSize));
@@ -99,7 +91,7 @@ export const TaskManagementPage: React.FC = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [search, departmentFilter, typeFilter]);
+  }, [search, typeFilter]);
 
   const openEdit = async (task: TaskDefinition) => {
     try {
@@ -124,7 +116,9 @@ export const TaskManagementPage: React.FC = () => {
       const saved = await taskApi.updateDefinition(editing!.id, {
         ...form, departmentId: form.departmentId || null,
       });
-      setTasks((current) => current.map((task) => task.id === saved.id ? saved : task));
+      setTasks((current) => current.map((task) => task.id === saved.id
+        ? { ...saved, isAssigned: task.isAssigned }
+        : task));
       setEditing(null);
       addToast('Task definition updated', 'success');
     } catch (error) {
@@ -153,28 +147,25 @@ export const TaskManagementPage: React.FC = () => {
     try {
       const assignment = await taskApi.assign(selected.id, employeeId, dueDate || undefined);
       setEmployeeTasks((current) => [assignment, ...current]);
+      setTasks((current) => current.map((task) =>
+        task.id === selected.id ? { ...task, isAssigned: true } : task,
+      ));
+      setSelected((current) => current ? { ...current, isAssigned: true } : current);
       setEmployeeId('');
       addToast('Task assigned successfully', 'success');
     } catch (error) {
       showError(error);
+      if (
+        error instanceof Error &&
+        error.message === "This task is already assigned to an engineer"
+      ) {
+        setTasks((current) => current.map((task) =>
+          task.id === selected.id ? { ...task, isAssigned: true } : task,
+        ));
+        setSelected((current) => current ? { ...current, isAssigned: true } : current);
+      }
     } finally {
       setAssigningOne(false);
-    }
-  };
-
-  const assignBulk = async () => {
-    if (!selected) return;
-    const ids = bulkEmployeeIds.split(/[\s,]+/).map((id) => id.trim()).filter(Boolean);
-    if (!ids.length) return;
-    setAssigningBulk(true);
-    try {
-      const result = await taskApi.assignBulk(selected.id, ids, dueDate || undefined);
-      addToast(`${result.assigned.length} task(s) assigned; ${result.failed.length} failed`, result.failed.length ? 'warning' : 'success');
-      setBulkEmployeeIds('');
-    } catch (error) {
-      showError(error);
-    } finally {
-      setAssigningBulk(false);
     }
   };
 
@@ -221,14 +212,6 @@ export const TaskManagementPage: React.FC = () => {
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search tasks..." />
         </div>
         <label className="task-filter-select">
-          <FileText size={15} />
-          <select value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)}>
-            <option value="">All departments</option>
-            {departments.map((department) => <option key={department} value={department}>{department}</option>)}
-          </select>
-          <ChevronDown size={14} />
-        </label>
-        <label className="task-filter-select">
           <Tag size={15} />
           <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as typeof typeFilter)}>
             <option value="all">All types</option>
@@ -249,7 +232,7 @@ export const TaskManagementPage: React.FC = () => {
             <thead>
               <tr>
                 <th className="task-check-cell"><input type="checkbox" aria-label="Select all tasks" disabled /></th>
-                <th>Task</th><th>Department</th><th>Duration</th><th>Requirement</th><th>Assigned</th><th>Status</th><th>Actions</th>
+                <th>Task</th><th>Duration</th><th>Requirement</th><th>Assigned</th><th>Status</th><th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -262,15 +245,24 @@ export const TaskManagementPage: React.FC = () => {
                       <span><strong>{task.title}</strong><small>{task.description || 'No description provided'}</small></span>
                     </div>
                   </td>
-                  <td><span className="task-muted-cell">{task.department?.name || 'All departments'}</span></td>
                   <td><span className="task-muted-cell"><Clock3 size={14} /> {task.estimatedMinutes} min</span></td>
                   <td><span className={`task-requirement ${task.required ? 'required' : 'optional'}`}>{task.required ? 'Required' : 'Optional'}</span></td>
-                  <td><span className="task-muted-cell"><UsersRound size={14} /> —</span></td>
+                  <td>
+                    <span className={`task-assignment-state ${task.isAssigned ? 'assigned' : 'unassigned'}`}>
+                      <UsersRound size={14} /> {task.isAssigned ? 'Assigned' : 'Unassigned'}
+                    </span>
+                  </td>
                   <td><span className="task-status active"><span /> Active</span></td>
                   <td>
                     <div className="task-action-cell">
                       <button title="Edit task" onClick={() => void openEdit(task)}><Edit2 size={15} /></button>
-                      <button title="Assign task" onClick={() => setSelected(task)}><UserPlus size={15} /></button>
+                      <button
+                        title={task.isAssigned ? 'Task is already assigned' : 'Assign task'}
+                        onClick={() => setSelected(task)}
+                        disabled={task.isAssigned}
+                      >
+                        <UserPlus size={15} />
+                      </button>
                       <button title="More actions" onClick={() => void deactivate(task)} disabled={deactivatingId === task.id}>
                         {deactivatingId === task.id ? <Loader2 size={15} className="animate-spin" /> : <MoreVertical size={16} />}
                       </button>
@@ -312,15 +304,14 @@ export const TaskManagementPage: React.FC = () => {
       {selected && (
         <div className="task-assignment-panel">
           <div className="task-panel-heading">
-            <div><strong>Assign “{selected.title}”</strong><span>Choose an active employee or assign to multiple employee IDs.</span></div>
+            <div><strong>Assign “{selected.title}”</strong><span>{selected.isAssigned ? 'This task has already been assigned.' : 'Choose one active employee for this task.'}</span></div>
             <button type="button" onClick={() => setSelected(null)}><X size={16} /></button>
           </div>
           <div className="task-assignment-grid">
-            <select value={employeeId} onChange={(event) => setEmployeeId(event.target.value)} disabled={loadingEmployees}><option value="">{loadingEmployees ? 'Loading employees…' : 'Select an employee'}</option>{employees.filter((employee) => employee.isActive).map((employee) => <option key={employee.id} value={employee.id}>{employee.name} · {employee.email}</option>)}</select>
-            <input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
-            <button className="btn-primary" onClick={() => void assignTask()} disabled={assigningOne || !employeeId}>{assigningOne && <Loader2 size={14} className="animate-spin" />} Assign task</button>
+            <select value={employeeId} onChange={(event) => setEmployeeId(event.target.value)} disabled={selected.isAssigned || loadingEmployees}><option value="">{loadingEmployees ? 'Loading employees…' : 'Select an employee'}</option>{employees.filter((employee) => employee.isActive).map((employee) => <option key={employee.id} value={employee.id}>{employee.name} · {employee.email}</option>)}</select>
+            <input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} disabled={selected.isAssigned} />
+            <button className="btn-primary" onClick={() => void assignTask()} disabled={selected.isAssigned || assigningOne || !employeeId}>{assigningOne && <Loader2 size={14} className="animate-spin" />} Assign task</button>
           </div>
-          <div className="task-bulk-row"><textarea value={bulkEmployeeIds} onChange={(event) => setBulkEmployeeIds(event.target.value)} placeholder="Bulk assignment: employee IDs separated by commas or spaces" /><button className="btn-secondary" onClick={() => void assignBulk()} disabled={assigningBulk}>{assigningBulk && <Loader2 size={14} className="animate-spin" />} Assign bulk</button></div>
         </div>
       )}
 

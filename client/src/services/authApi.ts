@@ -5,6 +5,13 @@ export interface AuthUser {
   name: string;
   email: string;
   role: string;
+  departmentId?: string | null;
+  departmentName?: string | null;
+  jobTitle?: string | null;
+  joiningDate?: string | null;
+  teamId?: string | null;
+  teamName?: string | null;
+  isActive?: boolean;
 }
 
 export interface EmployeeSummary {
@@ -13,6 +20,19 @@ export interface EmployeeSummary {
   email: string;
   role: string;
   departmentId: string | null;
+  jobTitle: string | null;
+  joiningDate: string | null;
+  teamId: string | null;
+  isActive: boolean;
+}
+
+export interface CreateEmployeeInput {
+  name: string;
+  email: string;
+  password: string;
+  jobTitle: string;
+  joiningDate: string | null;
+  teamId: string | null;
   isActive: boolean;
 }
 
@@ -34,16 +54,21 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
-  register: (name: string, email: string, password: string) =>
-    apiRequest<{ user: AuthUser; accessToken: string }>('/auth/register', {
+  createEmployee: (employee: CreateEmployeeInput) =>
+    apiRequest<EmployeeSummary>('/auth/employees', {
       method: 'POST',
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify(employee),
     }),
   me: () =>
     apiRequest<{ user: AuthUser }>('/auth/me', {
       headers: {
         Authorization: ['Bearer', localStorage.getItem('accessToken') || ''].join(' '),
       },
+    }),
+  updateProfile: (profile: { name: string; email: string }) =>
+    apiRequest<{ user: AuthUser }>('/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify(profile),
     }),
   employees: () => apiRequest<EmployeeSummary[]>('/auth/employees'),
   departments: () => apiRequest<DepartmentSummary[]>('/auth/departments'),

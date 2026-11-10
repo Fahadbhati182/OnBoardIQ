@@ -269,7 +269,93 @@ export async function listTasks(req, res) {
   }
   const { data, error } = await query;
   if (error) throw new ApiError(500, "An unexpected database error occurred");
-  res.json({ success: true, data: (data || []).map(mapTask) });
+  const taskRows = data || [];
+  const taskIds = taskRows.map(({ id }) => id);
+  let assignedTaskIds = new Set();
+  if (taskIds.length) {
+    const { data: assignments, error: assignmentError } = await supabase
+      .from("employee_tasks")
+      .select("task_id")
+      .in("task_id", taskIds);
+    if (assignmentError) {
+      throw new ApiError(500, "An unexpected database error occurred");
+    }
+    assignedTaskIds = new Set(
+      (assignments || []).map(({ task_id }) => task_id),
+    );
+  }
+  res.json({
+    success: true,
+    data: taskRows.map((task) => ({
+      ...mapTask(task),
+      isAssigned: assignedTaskIds.has(task.id),
+    })),
+  });
+}
+
+export async function getAdminDashboardSummary(req, res) {
+  const [
+    { count: totalEmployees, error: employeesError },
+    { count: activeEmployees, error: activeEmployeesError },
+    { count: activeTasks, error: activeTasksError },
+    { count: totalAssignments, error: assignmentsError },
+    { count: completedAssignments, error: completedError },
+    { count: inProgressAssignments, error: inProgressError },
+    { count: pendingAssignments, error: pendingError },
+  ] = await Promise.all([
+    supabase
+      .from("users")
+      .select("id", { count: "exact", head: true })
+      .eq("role", "ENGINEER"),
+    supabase
+      .from("users")
+      .select("id", { count: "exact", head: true })
+      .eq("role", "ENGINEER")
+      .eq("is_active", true),
+    supabase
+      .from("onboarding_tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("is_active", true),
+    supabase
+      .from("employee_tasks")
+      .select("id", { count: "exact", head: true }),
+    supabase
+      .from("employee_tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "COMPLETED"),
+    supabase
+      .from("employee_tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "IN_PROGRESS"),
+    supabase
+      .from("employee_tasks")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "NOT_STARTED"),
+  ]);
+  if (
+    employeesError ||
+    activeEmployeesError ||
+    activeTasksError ||
+    assignmentsError ||
+    completedError ||
+    inProgressError ||
+    pendingError
+  ) {
+    throw new ApiError(500, "An unexpected database error occurred");
+  }
+
+  res.json({
+    success: true,
+    data: {
+      totalEmployees: totalEmployees ?? 0,
+      activeEmployees: activeEmployees ?? 0,
+      activeTasks: activeTasks ?? 0,
+      totalAssignments: totalAssignments ?? 0,
+      completedAssignments: completedAssignments ?? 0,
+      inProgressAssignments: inProgressAssignments ?? 0,
+      pendingAssignments: pendingAssignments ?? 0,
+    },
+  });
 }
 
 export async function getTask(req, res) {
@@ -323,6 +409,20 @@ async function verifyEmployee(employeeId) {
 async function assign(taskId, employeeId, dueDate) {
   await findTask(taskId, false);
   await verifyEmployee(employeeId);
+  const { data: existingAssignment, error: assignmentLookupError } =
+    await supabase
+      .from("employee_tasks")
+      .select("id")
+      .eq("task_id", taskId)
+      .limit(1)
+      .maybeSingle();
+  if (assignmentLookupError) {
+    throw new ApiError(500, "An unexpected database error occurred");
+  }
+  if (existingAssignment) {
+    throw new ApiError(409, "This task is already assigned to an engineer");
+  }
+
   const { data, error } = await supabase
     .from("employee_tasks")
     .insert({
@@ -349,29 +449,18 @@ export async function assignTask(req, res) {
 
 export async function assignTaskBulk(req, res) {
   const taskId = requireUuid(req.params.taskId, "taskId");
-  await findTask(taskId, false);
   const employeeIds = req.body?.employeeIds;
-  if (!Array.isArray(employeeIds) || !employeeIds.length) {
-    throw new ApiError(400, "employeeIds must be a non-empty array");
+  if (!Array.isArray(employeeIds) || employeeIds.length !== 1) {
+    throw new ApiError(400, "A task can only be assigned to one engineer");
   }
-  const uniqueIds = [...new Set(employeeIds)];
-  const dueDate = parseDate(req.body?.dueDate);
-  const results = await Promise.allSettled(
-    uniqueIds.map((id) => assign(taskId, id, dueDate)),
+  const assignment = await assign(
+    taskId,
+    employeeIds[0],
+    parseDate(req.body?.dueDate),
   );
-  const assigned = results
-    .filter((result) => result.status === "fulfilled")
-    .map((result) => result.value);
-  const failed = results
-    .map((result, index) => ({ result, employeeId: uniqueIds[index] }))
-    .filter(({ result }) => result.status === "rejected")
-    .map(({ result, employeeId }) => ({
-      employeeId,
-      message: result.reason.message,
-    }));
-  res.status(assigned.length ? 201 : 409).json({
-    success: failed.length === 0,
-    data: { assigned, failed },
+  res.status(201).json({
+    success: true,
+    data: { assigned: [assignment], failed: [] },
   });
 }
 
@@ -379,6 +468,29 @@ export async function getEmployeeTasks(req, res) {
   const employee = await verifyEmployee(req.params.employeeId);
   const rows = await getAssignments(employee.id, req.query.status);
   res.json({ success: true, data: rows.map(mapAssignment) });
+}
+
+export async function getAvailableTasksForEmployee(req, res) {
+  await verifyEmployee(req.params.employeeId);
+  const [{ data: assignments, error: assignmentError }, { data: tasks, error }] =
+    await Promise.all([
+      supabase.from("employee_tasks").select("task_id"),
+      supabase
+        .from("onboarding_tasks")
+        .select(`${TASK_COLUMNS}, departments(id, name)`)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false }),
+    ]);
+
+  if (assignmentError || error) {
+    throw new ApiError(500, "An unexpected database error occurred");
+  }
+
+  const assignedTaskIds = new Set((assignments || []).map(({ task_id }) => task_id));
+  const availableTasks = (tasks || [])
+    .filter((task) => !assignedTaskIds.has(task.id))
+    .map(mapTask);
+  res.json({ success: true, data: availableTasks });
 }
 
 export async function getEmployeeProgress(req, res) {

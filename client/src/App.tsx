@@ -15,6 +15,7 @@ import { MyTasksPage } from './pages/MyTasksPage';
 import { DocumentsPage } from './pages/DocumentsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { EmployeesPage } from './pages/EmployeesPage';
+import { TeamsPage } from './pages/TeamsPage';
 import { HRAdminDocsPage } from './pages/HRAdminDocsPage';
 import { ITAdminAccessPage } from './pages/ITAdminAccessPage';
 import { CompanyInfoPage } from './pages/CompanyInfoPage';
@@ -63,7 +64,7 @@ const AppContent: React.FC = () => {
   }
 
   const allowedPages = currentUserRole === 'engineering_admin'
-    ? ['dashboard', 'documents', 'task-admin', 'task-create', 'employees', 'profile', 'company', 'document-upload']
+    ? ['dashboard', 'documents', 'chat', 'task-admin', 'task-create', 'employees', 'teams', 'profile', 'company', 'document-upload']
     : currentUserRole === 'hr_admin'
     ? ['dashboard', 'documents', 'hr-docs', 'task-admin', 'task-create', 'employees', 'profile', 'company', 'document-upload']
     : currentUserRole === 'it_admin'
@@ -107,6 +108,7 @@ const AppContent: React.FC = () => {
             <Route path={pagePaths['document-upload']} element={<DocumentUploadPage />} />
             <Route path={pagePaths.profile} element={<ProfilePage />} />
             <Route path={pagePaths.employees} element={<EmployeesPage />} />
+            <Route path={pagePaths.teams} element={<TeamsPage />} />
             <Route path={pagePaths['hr-docs']} element={<HRAdminDocsPage />} />
             <Route path={pagePaths['it-access']} element={<ITAdminAccessPage />} />
             <Route path={pagePaths.company} element={<CompanyInfoPage />} />

@@ -14,9 +14,11 @@ import {
 import ApiError from "../utils/ApiError.js";
 
 const USER_COLUMNS =
-  "id, name, email, password_hash, role, job_title, joining_date, team_id, is_active";
+  "id, name, email, password_hash, role, department_id, job_title, joining_date, team_id, is_active";
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync("invalid-password-placeholder",12,);
 const APPLICATION_ROLES = ["ENGINEER", "ENGINEERING_ADMIN"];
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
@@ -33,11 +35,6 @@ function validateApplicationRole(role) {
   if (!APPLICATION_ROLES.includes(role)) {
     throw new ApiError(403, "This account has an invalid application role");
   }
-}
-
-function toPublicUser(user) {
-  const { password_hash: _passwordHash, ...publicUser } = user;
-  return publicUser;
 }
 
 function setRefreshCookie(res, token) {
@@ -66,8 +63,15 @@ function validateCredentials(name, email, password, requireName = false) {
   }
 
   const normalizedEmail = email.trim().toLowerCase();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+  if (
+    normalizedEmail.length > 255 ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
+  ) {
     throw new ApiError(400, "A valid email address is required");
+  }
+  const normalizedName = typeof name === "string" ? name.trim() : undefined;
+  if (requireName && normalizedName.length > 150) {
+    throw new ApiError(400, "Name must be 150 characters or fewer");
   }
 
   const passwordBytes = Buffer.byteLength(password, "utf8");
@@ -76,10 +80,41 @@ function validateCredentials(name, email, password, requireName = false) {
   }
 
   return {
-    name: typeof name === "string" ? name.trim() : undefined,
+    name: normalizedName,
     normalizedEmail,
     password,
   };
+}
+
+function optionalUuid(value, field) {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value !== "string" || !UUID_PATTERN.test(value)) {
+    throw new ApiError(400, `${field} must be a valid UUID`);
+  }
+  return value;
+}
+
+function optionalDate(value, field) {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new ApiError(400, `${field} must be a valid date`);
+  }
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+    throw new ApiError(400, `${field} must be a valid date`);
+  }
+  return value;
+}
+
+async function ensureReferenceExists(table, id, label) {
+  if (!id) return;
+  const { data, error } = await supabase
+    .from(table)
+    .select("id")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) handleDatabaseError(error, `${label} lookup`);
+  if (!data) throw new ApiError(404, `${label} was not found`);
 }
 
 async function findUserByEmail(email) {
@@ -119,13 +154,34 @@ async function createSession(user, req, res) {
   return createAccessToken(user);
 }
 
-export async function register(req, res) {
+export async function createEmployee(req, res) {
   const { name, normalizedEmail, password } = validateCredentials(
     req.body?.name,
     req.body?.email,
     req.body?.password,
     true,
   );
+  const { departmentId, teamId, joiningDate, jobTitle, isActive = true } =
+    req.body ?? {};
+  const department = optionalUuid(departmentId, "departmentId");
+  const team = optionalUuid(teamId, "teamId");
+  const joining = optionalDate(joiningDate, "joiningDate");
+  if (
+    jobTitle !== undefined &&
+    jobTitle !== null &&
+    (typeof jobTitle !== "string" || jobTitle.trim().length > 150)
+  ) {
+    throw new ApiError(400, "Job title must be 150 characters or fewer");
+  }
+  if (typeof isActive !== "boolean") {
+    throw new ApiError(400, "isActive must be a boolean");
+  }
+
+  await Promise.all([
+    ensureReferenceExists("departments", department, "Department"),
+    ensureReferenceExists("teams", team, "Team"),
+  ]);
+
   const passwordHash = await bcrypt.hash(password, 12);
   const { data: user, error } = await supabase
     .from("users")
@@ -134,25 +190,41 @@ export async function register(req, res) {
       email: normalizedEmail,
       password_hash: passwordHash,
       role: "ENGINEER",
+      department_id: department,
+      job_title: jobTitle?.trim() || null,
+      joining_date: joining,
+      team_id: team,
+      is_active: isActive,
     })
-    .select(USER_COLUMNS)
+    .select(
+      "id, name, email, role, department_id, job_title, joining_date, team_id, is_active",
+    )
     .single();
 
   if (error?.code === "23505") {
     throw new ApiError(409, "An account with this email already exists");
   }
   if (error) {
-    handleDatabaseError(error, "registration");
+    handleDatabaseError(error, "employee creation");
   }
   if (!user) {
-    throw new ApiError(500, "User registration did not return an account");
+    throw new ApiError(500, "Employee creation did not return an account");
   }
 
-  const accessToken = await createSession(user, req, res);
   res.status(201).json({
     success: true,
-    message: "Account created",
-    data: { user: toPublicUser(user), accessToken },
+    message: "Employee created",
+    data: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      departmentId: user.department_id,
+      jobTitle: user.job_title,
+      joiningDate: user.joining_date,
+      teamId: user.team_id,
+      isActive: user.is_active,
+    },
   });
 }
 
@@ -176,11 +248,12 @@ export async function login(req, res) {
   }
   validateApplicationRole(user.role);
 
+  const profile = await getUserProfile(user);
   const accessToken = await createSession(user, req, res);
   res.status(200).json({
     success: true,
     message: "Login successful",
-    data: { user: toPublicUser(user), accessToken },
+    data: { user: profile, accessToken },
   });
 }
 
@@ -292,17 +365,108 @@ export async function logout(req, res) {
   res.status(200).json({ success: true, message: "Logged out" });
 }
 
-export function getCurrentUser(req, res) {
+export async function getCurrentUser(req, res) {
+  const user = await getUserProfile(req.user);
+  res.status(200).json({ success: true, data: { user } });
+}
+
+async function getUserProfile(user) {
+  const [departmentResult, teamResult] = await Promise.all([
+    user.department_id
+      ? supabase
+          .from("departments")
+          .select("name")
+          .eq("id", user.department_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    user.team_id
+      ? supabase
+          .from("teams")
+          .select("name")
+          .eq("id", user.team_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+  if (departmentResult.error) {
+    handleDatabaseError(departmentResult.error, "profile department lookup");
+  }
+  if (teamResult.error) {
+    handleDatabaseError(teamResult.error, "profile team lookup");
+  }
+
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    departmentId: user.department_id ?? null,
+    departmentName: departmentResult.data?.name ?? null,
+    jobTitle: user.job_title ?? null,
+    joiningDate: user.joining_date ?? null,
+    teamId: user.team_id ?? null,
+    teamName: teamResult.data?.name ?? null,
+    isActive: user.is_active,
+  };
+}
+
+export async function updateCurrentUser(req, res) {
+  const allowedFields = new Set(["name", "email"]);
+  const unexpectedField = Object.keys(req.body ?? {}).find(
+    (field) => !allowedFields.has(field),
+  );
+  if (unexpectedField) {
+    throw new ApiError(400, "Only name and email can be updated");
+  }
+
+  const updates = {};
+  if (Object.prototype.hasOwnProperty.call(req.body ?? {}, "name")) {
+    const name = req.body.name;
+    if (typeof name !== "string" || !name.trim() || name.trim().length > 150) {
+      throw new ApiError(400, "Name is required and must be 150 characters or fewer");
+    }
+    updates.name = name.trim();
+  }
+  if (Object.prototype.hasOwnProperty.call(req.body ?? {}, "email")) {
+    if (typeof req.body.email !== "string") {
+      throw new ApiError(400, "A valid email address is required");
+    }
+    const email = req.body.email.trim().toLowerCase();
+    if (email.length > 255 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new ApiError(400, "A valid email address is required");
+    }
+    updates.email = email;
+  }
+  if (Object.keys(updates).length === 0) {
+    throw new ApiError(400, "Provide a name or email to update");
+  }
+
+  updates.updated_at = new Date().toISOString();
+  const { data: user, error } = await supabase
+    .from("users")
+    .update(updates)
+    .eq("id", req.user.id)
+    .select(USER_COLUMNS)
+    .single();
+
+  if (error?.code === "23505") {
+    throw new ApiError(409, "An account with this email already exists");
+  }
+  if (error) handleDatabaseError(error, "profile update");
+  if (!user) throw new ApiError(404, "User was not found");
+
   res.status(200).json({
     success: true,
-    data: { user: toPublicUser(req.user) },
+    message: "Profile updated",
+    data: { user: await getUserProfile(user) },
   });
 }
 
 export async function listEmployees(req, res) {
   const { data, error } = await supabase
     .from("users")
-    .select("id, name, email, role, job_title, joining_date, team_id, is_active")
+    .select(
+      "id, name, email, role, department_id, job_title, joining_date, team_id, is_active",
+    )
     .eq("role", "ENGINEER")
     .order("name", { ascending: true });
 
@@ -317,6 +481,7 @@ export async function listEmployees(req, res) {
       name: employee.name,
       email: employee.email,
       role: employee.role,
+      departmentId: employee.department_id,
       jobTitle: employee.job_title,
       joiningDate: employee.joining_date,
       teamId: employee.team_id,

@@ -38,7 +38,7 @@ interface AppContextType {
     role: string;
   }) => void;
   signOut: () => Promise<void>;
-  updateUserProfile: (updates: Partial<UserProfile>) => void;
+  updateUserProfile: (updates: { name: string; email: string }) => Promise<void>;
   tasks: TaskItem[];
   updateTaskStatus: (taskId: string, status: TaskStatus) => void;
   toggleChecklistItem: (taskId: string, checklistId: string) => void;
@@ -131,7 +131,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     },
     {
       id: "n3",
-      title: "Welcome to ISS! Your orientation starts now",
+      title: "Welcome to Northstar Technologies Pvt. Ltd.! Your orientation starts now",
       time: "Yesterday",
       read: true,
     },
@@ -253,8 +253,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     navigate(pagePaths[page]);
   };
 
-  const updateUserProfile = (updates: Partial<UserProfile>) => {
-    setCurrentUser((prev) => ({ ...prev, ...updates }));
+  const updateUserProfile = async (updates: { name: string; email: string }) => {
+    const { user } = await authApi.updateProfile(updates);
+    setAuthenticatedUser(user);
     addToast("Profile updated successfully!", "success");
   };
 
@@ -263,19 +264,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({
     name: string;
     email: string;
     role: string;
+    departmentName?: string | null;
+    jobTitle?: string | null;
+    joiningDate?: string | null;
+    teamId?: string | null;
+    teamName?: string | null;
+    isActive?: boolean;
   }) => {
     const role = user.role.toLowerCase().replace("-", "_") as UserRole;
-    setCurrentUser((previous) => ({
-      ...previous,
-      ...user,
+    setCurrentUser({
+      id: user.id,
+      name: user.name,
+      email: user.email,
       role,
+      jobTitle: user.jobTitle || "",
+      department: user.departmentName || "",
+      joiningDate: user.joiningDate
+        ? new Date(`${user.joiningDate}T00:00:00`).toLocaleDateString()
+        : "",
+      manager: "",
+      location: "",
+      employeeId: user.id,
+      phone: "",
+      teamId: user.teamId || null,
+      teamName: user.teamName || null,
+      isActive: user.isActive,
       initials: user.name
         .split(/\s+/)
         .map((part) => part[0])
         .join("")
         .slice(0, 2)
         .toUpperCase(),
-    }));
+    });
     setCurrentUserRole(role);
     setIsAuthenticated(true);
     const routePage = pageFromPath(location.pathname);

@@ -9,6 +9,8 @@ import {
   deactivateTask,
   getEmployeeProgress,
   getEmployeeTasks,
+  getAvailableTasksForEmployee,
+  getAdminDashboardSummary,
   getMyProgress,
   getMyTask,
   getMyTasks,
@@ -42,6 +44,16 @@ router.get("/my-progress", ...employee, AsynHandler(getMyProgress));
 // ENGINEERING_ADMIN
 router.post("/", ...engineeringAdmin, AsynHandler(createTask));
 router.get("/", ...engineeringAdmin, AsynHandler(listTasks));
+router.get(
+  "/admin/dashboard-summary",
+  ...engineeringAdmin,
+  AsynHandler(getAdminDashboardSummary),
+);
+router.get(
+  "/admin/employees/:employeeId/available-tasks",
+  ...engineeringAdmin,
+  AsynHandler(getAvailableTasksForEmployee),
+);
 router.get(
   "/admin/employees/:employeeId/tasks",
   ...engineeringAdmin,

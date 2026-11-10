@@ -101,7 +101,7 @@ export const TopBar: React.FC = () => {
           title="Instant AI Help"
         >
           <Sparkles size={15} style={{ color: '#e7d7be' }} />
-          <span>Ask ISS AI</span>
+          <span>Ask Northstar AI</span>
         </button>
 
         {/* Notifications Popover */}

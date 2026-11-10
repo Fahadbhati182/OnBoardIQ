@@ -11,6 +11,7 @@ export const pagePaths: Record<PageType, string> = {
   "document-upload": "/document-upload",
   profile: "/profile",
   employees: "/employees",
+  teams: "/teams",
   "hr-docs": "/hr-docs",
   "it-access": "/it-access",
   company: "/company",
@@ -24,4 +25,3 @@ const pageByPath = Object.entries(pagePaths).reduce(
 export function pageFromPath(pathname: string): PageType | null {
   return pageByPath[pathname] || null;
 }
-

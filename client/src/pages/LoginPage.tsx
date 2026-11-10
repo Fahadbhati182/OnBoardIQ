@@ -15,8 +15,6 @@ import {
 export const LoginPage: React.FC = () => {
   const { setCurrentPage, setAuthenticatedUser, addToast, theme, setTheme } = useApp();
 
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("fahad@iss.com");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
@@ -24,16 +22,12 @@ export const LoginPage: React.FC = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const { user, accessToken } = isRegistering
-        ? await authApi.register(name, email, password)
-        : await authApi.login(email, password);
+      const { user, accessToken } = await authApi.login(email, password);
       localStorage.setItem("accessToken", accessToken);
       setAuthenticatedUser(user);
       setCurrentPage("dashboard");
       addToast(
-        isRegistering
-          ? "Account created successfully"
-          : "Welcome back! Signed in successfully",
+        "Welcome back! Signed in successfully",
         "success",
       );
     } catch (error) {
@@ -63,7 +57,9 @@ export const LoginPage: React.FC = () => {
         <div style={styles.heroContent}>
           {/* Logo */}
           <div style={styles.heroBrandRow}>
-            <span className="brand-iss">iss</span>
+            <span className="brand-company-name">
+              Northstar Technologies Pvt. Ltd.
+            </span>
           </div>
 
           <div style={styles.heroMainBlock}>
@@ -76,7 +72,7 @@ export const LoginPage: React.FC = () => {
               What's Next.
             </h1>
             <p style={styles.heroText}>
-              Your guide to a smooth start at ISS. Get answers, complete
+              Your guide to a smooth start at Northstar Technologies Pvt. Ltd. Get answers, complete
               onboarding tasks, and access everything you need — powered by AI.
             </p>
           </div>
@@ -112,31 +108,14 @@ export const LoginPage: React.FC = () => {
         <div className="login-theme-card" style={styles.loginCard}>
           <div style={styles.cardHeader}>
             <h2 style={styles.cardTitle}>
-              {isRegistering ? "Create Account" : "Welcome Back"}
+              Welcome Back
             </h2>
             <p style={styles.cardSubtitle}>
-              {isRegistering
-                ? "Create your onboarding account"
-                : "Sign in to continue to your journey"}
+              Sign in to continue to your journey
             </p>
           </div>
 
           <form onSubmit={handleLogin} style={styles.form}>
-            {isRegistering && (
-              <div style={styles.inputGroup}>
-                <label style={styles.inputLabel}>Full name</label>
-                <div style={styles.inputWrapper}>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Your full name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    style={styles.formInput}
-                  />
-                </div>
-              </div>
-            )}
             <div style={styles.inputGroup}>
               <label style={styles.inputLabel}>Email address</label>
               <div style={styles.inputWrapper}>
@@ -197,7 +176,7 @@ export const LoginPage: React.FC = () => {
             </div>
 
             <button type="submit" style={styles.submitBtn}>
-              <span>{isRegistering ? "Create Account" : "Sign In"}</span>
+              <span>Sign In</span>
               <ArrowRight size={16} />
             </button>
 
@@ -237,18 +216,8 @@ export const LoginPage: React.FC = () => {
             </button>
           </form>
 
-          <button
-            type="button"
-            onClick={() => setIsRegistering((value) => !value)}
-            style={styles.forgotLink}
-          >
-            {isRegistering
-              ? "Already have an account? Sign in"
-              : "Need an account? Register"}
-          </button>
-
           <div style={styles.cardFooter}>
-            <span>New to ISS? </span>
+            <span>New to Northstar Technologies Pvt. Ltd.? </span>
             <a
               href="#contact"
               onClick={(e) => {

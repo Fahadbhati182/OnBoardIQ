@@ -26,6 +26,16 @@ export interface TaskProgress {
   requiredCompletionPercentage: number;
 }
 
+export interface AdminDashboardSummary {
+  totalEmployees: number;
+  activeEmployees: number;
+  activeTasks: number;
+  totalAssignments: number;
+  completedAssignments: number;
+  inProgressAssignments: number;
+  pendingAssignments: number;
+}
+
 export interface TaskDefinition {
   id: string;
   title: string;
@@ -36,6 +46,7 @@ export interface TaskDefinition {
   isActive: boolean;
   createdAt: string;
   department: { id: string; name: string } | null;
+  isAssigned?: boolean;
 }
 
 export interface TaskDefinitionInput {
@@ -69,15 +80,14 @@ export const taskApi = {
       method: 'POST',
       body: JSON.stringify({ employeeId, dueDate: dueDate || undefined }),
     }),
-  assignBulk: (taskId: string, employeeIds: string[], dueDate?: string) =>
-    apiRequest<{ assigned: AssignedTask[]; failed: { employeeId: string; message: string }[] }>(
-      `/tasks/${taskId}/assign-bulk`,
-      { method: 'POST', body: JSON.stringify({ employeeIds, dueDate: dueDate || undefined }) },
-    ),
   getEmployeeTasks: (employeeId: string, status = '') =>
     apiRequest<AssignedTask[]>(
       `/tasks/admin/employees/${employeeId}/tasks${status ? `?status=${status}` : ''}`,
     ),
+  getAvailableTasksForEmployee: (employeeId: string) =>
+    apiRequest<TaskDefinition[]>(`/tasks/admin/employees/${employeeId}/available-tasks`),
   getEmployeeProgress: (employeeId: string) =>
     apiRequest<TaskProgress>(`/tasks/admin/employees/${employeeId}/progress`),
+  getAdminDashboardSummary: () =>
+    apiRequest<AdminDashboardSummary>('/tasks/admin/dashboard-summary'),
 };

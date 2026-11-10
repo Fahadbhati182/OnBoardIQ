@@ -12,6 +12,7 @@ import {
   downloadDocumentForInternal,
   getDocument,
   listDocuments,
+  listEmployeeDocuments,
   listVersions,
   listVersionsForInternal,
   publishDocument,
@@ -32,6 +33,12 @@ const upload = multer({
 const administrators = [requireAuth, allowedRoles(["ENGINEERING_ADMIN"])];
 
 router.get("/", requireAuth, AsynHandler(listDocuments));
+router.get(
+  "/employee",
+  requireAuth,
+  allowedRoles(["ENGINEER"]),
+  AsynHandler(listEmployeeDocuments),
+);
 
 router.post(
   "/",
@@ -69,5 +76,4 @@ router.get(
 );
 
 export default router;
-
 

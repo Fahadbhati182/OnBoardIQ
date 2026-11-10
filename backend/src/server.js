@@ -5,6 +5,7 @@ import authRoutes from "./routes/authRoutes.js";
 import taskRoutes from "./routes/taskRoutes.js";
 import documentRoutes from "./routes/documentRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
+import teamRoutes from "./routes/teamRoutes.js";
 import ApiError from "./utils/ApiError.js";
 import cors from "cors";
 
@@ -35,6 +36,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/teams", teamRoutes);
 
 app.use((err, _req, res, _next) => {
   const status = Number.isInteger(err.status) ? err.status : 500;

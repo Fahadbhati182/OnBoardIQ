@@ -9,6 +9,7 @@ export type PageType =
   | 'document-upload'
   | 'profile' 
   | 'employees'
+  | 'teams'
   | 'hr-docs' 
   | 'it-access' 
   | 'company';
@@ -30,6 +31,9 @@ export interface UserProfile {
   location: string;
   employeeId: string;
   phone: string;
+  teamId?: string | null;
+  teamName?: string | null;
+  isActive?: boolean;
 }
 
 export type TaskStatus = 'completed' | 'in_progress' | 'not_started';

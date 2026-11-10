@@ -248,6 +248,46 @@ export async function listDocuments(req, res) {
   });
 }
 
+export async function listEmployeeDocuments(req, res) {
+  const page = Math.max(1, Number.parseInt(req.query.page || "1", 10));
+  const limit = Math.min(
+    100,
+    Math.max(1, Number.parseInt(req.query.limit || "20", 10)),
+  );
+  let query = supabase
+    .from("documents")
+    .select(DOCUMENT_COLUMNS)
+    .eq("status", "PUBLISHED")
+    .in("access_scope", ["ALL_EMPLOYEES", "TEAM_ONLY"])
+    .order("updated_at", { ascending: false });
+
+  if (req.query.search) {
+    query = query.ilike("title", `%${text(req.query.search, "search")}%`);
+  }
+  if (req.query.documentType) {
+    const documentType = text(req.query.documentType, "documentType");
+    if (!DOCUMENT_TYPES.includes(documentType)) {
+      throw new ApiError(400, "Invalid documentType");
+    }
+    query = query.eq("document_type", documentType);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new ApiError(500, "An unexpected database error occurred");
+
+  const permitted = [];
+  for (const document of data || []) {
+    if (canViewDocument(req.user, document)) {
+      permitted.push(mapDocument(document, await latestVersion(document.id)));
+    }
+  }
+  res.json({
+    success: true,
+    data: permitted.slice((page - 1) * limit, page * limit),
+    pagination: { page, limit, total: permitted.length },
+  });
+}
+
 export async function getDocument(req, res) {
   const document = await findDocument(req.params.id);
   await authorize(

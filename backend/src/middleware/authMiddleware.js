@@ -37,7 +37,9 @@ export async function requireAuth(req, _res, next) {
 
   const { data: user, error } = await supabase
     .from("users")
-    .select("id, name, email, role, team_id, is_active")
+    .select(
+      "id, name, email, role, department_id, job_title, joining_date, team_id, is_active",
+    )
     .eq("id", claims.sub)
     .maybeSingle();
 

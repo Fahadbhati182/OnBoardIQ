@@ -6,6 +6,11 @@ import {
 } from "../src/services/documentAuthorization.js";
 
 const engineer = { id: "engineer-1", role: "ENGINEER", team_id: "team-a" };
+const engineerWithoutTeam = {
+  id: "engineer-3",
+  role: "ENGINEER",
+  team_id: null,
+};
 const otherTeamEngineer = {
   id: "engineer-2",
   role: "ENGINEER",
@@ -51,6 +56,17 @@ test("engineer cannot access another team's document", () => {
     ),
     false,
   );
+  assert.equal(
+    canViewDocument(
+      engineerWithoutTeam,
+      document({ access_scope: "TEAM_ONLY", team_id: "team-a" }),
+    ),
+    false,
+  );
+});
+
+test("engineer without a team can still access ALL_EMPLOYEES documents", () => {
+  assert.equal(canViewDocument(engineerWithoutTeam, document()), true);
 });
 
 test("engineer cannot access ADMIN_ONLY, draft, or archived documents", () => {

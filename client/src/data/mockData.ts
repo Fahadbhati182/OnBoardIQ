@@ -5,42 +5,42 @@ export const mockUsers: Record<string, UserProfile> = {
     id: 'emp-1',
     name: 'Fahad Bhati',
     initials: 'FA',
-    email: 'fahad@iss.com',
+    email: 'fahad@northstar.example',
     role: 'employee',
     jobTitle: 'Software Engineer',
     department: 'Engineering Department',
     joiningDate: 'Jan 22, 2024',
     manager: 'Elena Rostova (VP of Engineering)',
     location: 'London HQ / Hybrid',
-    employeeId: 'ISS-89241',
+    employeeId: 'NTH-89241',
     phone: '+44 20 7946 0912',
   },
   hr_admin: {
     id: 'hr-1',
     name: 'Sarah Jenkins',
     initials: 'SJ',
-    email: 'sarah.jenkins@iss.com',
+    email: 'sarah.jenkins@northstar.example',
     role: 'hr_admin',
     jobTitle: 'Head of People & Culture',
     department: 'Human Resources',
     joiningDate: 'Mar 15, 2021',
     manager: 'Marcus Sterling (Chief People Officer)',
     location: 'London HQ',
-    employeeId: 'ISS-41002',
+    employeeId: 'NTH-41002',
     phone: '+44 20 7946 0184',
   },
   it_admin: {
     id: 'it-1',
     name: 'David Miller',
     initials: 'DM',
-    email: 'david.miller@iss.com',
+    email: 'david.miller@northstar.example',
     role: 'it_admin',
     jobTitle: 'Lead SecOps & Systems Engineer',
     department: 'Information Technology',
     joiningDate: 'Nov 02, 2022',
     manager: 'Vikram Patel (CIO)',
     location: 'London HQ',
-    employeeId: 'ISS-60319',
+    employeeId: 'NTH-60319',
     phone: '+44 20 7946 0773',
   },
 };
@@ -49,14 +49,14 @@ export const initialTasks: TaskItem[] = [
   {
     id: 'task-1',
     title: 'Complete Company Introduction',
-    description: 'Learn about ISS, our mission, values, and organizational culture.',
+    description: 'Learn about Northstar Technologies, our mission, values, and organizational culture.',
     timeEstimate: '15 min',
     status: 'completed',
     category: 'Orientation',
     thumbnailUrl: '/assets/images/welcome-bg.jpg',
     instructions: 'Watch the introductory keynote by our executive leadership team and complete the interactive culture quiz.',
     checklist: [
-      { id: 'c-1', text: 'Watch ISS Welcome Video (8 min)', completed: true },
+      { id: 'c-1', text: 'Watch Northstar Welcome Video (8 min)', completed: true },
       { id: 'c-2', text: 'Review Corporate Values & Global Operations', completed: true },
       { id: 'c-3', text: 'Complete Culture Alignment Checkpoint', completed: true },
     ],
@@ -133,9 +133,9 @@ export const initialDocuments: DocumentItem[] = [
     status: 'published',
     updatedAt: 'Jan 15, 2024',
     fileSize: '4.2 MB',
-    summary: 'The primary guide for all ISS team members covering company values, workplace policies, standard operating procedures, and career development frameworks.',
+    summary: 'The primary guide for all Northstar Technologies team members covering company values, workplace policies, standard operating procedures, and career development frameworks.',
     keyPoints: [
-      'Comprehensive overview of ISS vision and operating principles',
+      'Comprehensive overview of Northstar Technologies vision and operating principles',
       'Code of professional conduct and mutual respect commitments',
       'Flexible working arrangements and core working hours policy',
       'Annual review cycles, continuous feedback, and progression tracks'
@@ -362,7 +362,7 @@ export const initialChatMessages: ChatMessage[] = [
   {
     id: 'msg-2',
     sender: 'ai',
-    text: `According to the ISS Parental Leave Policy (v2.1), eligible employees can avail:
+    text: `According to the Northstar Technologies Parental Leave Policy (v2.1), eligible employees can avail:
 
 • Maternity Leave: 26 weeks (paid)
 • Paternity Leave: 4 weeks (paid)
@@ -389,20 +389,20 @@ export const chatSuggestedPrompts = [
 ];
 
 export const aiKnowledgeBase: Record<string, string> = {
-  eligible: `All full-time ISS employees with a minimum of 6 months continuous service prior to the expected date are eligible for full company-paid parental leave. Part-time employees receive proportional pro-rated entitlements according to their contracted hours.`,
+  eligible: `All full-time Northstar Technologies employees with a minimum of 6 months continuous service prior to the expected date are eligible for full company-paid parental leave. Part-time employees receive proportional pro-rated entitlements according to their contracted hours.`,
   apply: `To apply for Parental Leave:
-1. Log in to the ISS Workday portal under Time & Absence.
+1. Log in to the Northstar Workday portal under Time & Absence.
 2. Select "Parental Leave" and upload your medical confirmation or adoption certification.
 3. Submit at least 30 days in advance.
 Your HR Business Partner and manager will review and confirm within 3 business days.`,
-  country: `Yes, while the global ISS baseline provides 26 weeks maternity, 4 weeks paternity, and 12 weeks adoption, local statutory mandates in certain countries (e.g. Nordics, Germany, UK) may offer enhanced leave structures. Refer to HR > Regional Addendums for your local country guidelines.`,
+  country: `Yes, while the Northstar Technologies baseline provides 26 weeks maternity, 4 weeks paternity, and 12 weeks adoption, local statutory mandates in certain countries (e.g. Nordics, Germany, UK) may offer enhanced leave structures. Refer to HR > Regional Addendums for your local country guidelines.`,
   documents: `Related documentation:
 • Parental Leave Policy v2.1 (PDF • 1.2 MB)
 • Flexible Return-to-Work Guidelines (PDF • 850 KB)
 • Healthcare Dependent Enrollment Form (PDF • 450 KB)`,
   it: `For IT setup:
 • You will receive your corporate hardware token and credentials via encrypted SMS.
-• Connect via SSO at id.iss.com to configure passwordless YubiKey authentication.
+• Connect via your company SSO portal to configure passwordless YubiKey authentication.
 • Access Jira, GitHub, Slack, and VPN through the Okta App Catalog.`,
-  health: `ISS health coverage is effective starting your very first day! You can enroll your dependents in medical, dental, and vision within your first 30 days via the Benefits Hub. Emergency travel coverage is also included automatically.`,
+  health: `Northstar Technologies health coverage is effective starting your very first day! You can enroll your dependents in medical, dental, and vision within your first 30 days via the Benefits Hub. Emergency travel coverage is also included automatically.`,
 };

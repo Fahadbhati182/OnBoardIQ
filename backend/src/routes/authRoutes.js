@@ -1,12 +1,13 @@
 import { Router } from "express";
 import {
   getCurrentUser,
+  updateCurrentUser,
+  createEmployee,
   listEmployees,
   listDepartments,
   login,
   logout,
   refresh,
-  register,
 } from "../controllers/authController.js";
 import {
   assignEngineerToTeam,
@@ -16,11 +17,17 @@ import { allowedRoles, requireAuth } from "../middleware/authMiddleware.js";
 
 const router = Router();
 
-router.post("/register", register);
 router.post("/login", login);
 router.post("/refresh", refresh);
 router.post("/logout", logout);
 router.get("/me", requireAuth, getCurrentUser);
+router.patch("/me", requireAuth, updateCurrentUser);
+router.post(
+  "/employees",
+  requireAuth,
+  allowedRoles(["ENGINEERING_ADMIN"]),
+  createEmployee,
+);
 router.get(
   "/employees",
   requireAuth,
