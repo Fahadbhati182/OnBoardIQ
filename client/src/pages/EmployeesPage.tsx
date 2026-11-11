@@ -68,7 +68,6 @@ const MetricCard: React.FC<{
 const emptyEmployeeForm: CreateEmployeeInput = {
   name: "",
   email: "",
-  password: "",
   jobTitle: "",
   joiningDate: null,
   teamId: null,
@@ -202,7 +201,12 @@ export const EmployeesPage: React.FC = () => {
         [...current, employee].sort((a, b) => a.name.localeCompare(b.name)),
       );
       setCreateFormOpen(false);
-      addToast(`Employee ${employee.name} created`, "success");
+      addToast(
+        employee.inviteEmailSent
+          ? `Employee ${employee.name} created; setup email sent`
+          : `Employee ${employee.name} created, but the setup email could not be sent`,
+        employee.inviteEmailSent ? "success" : "error",
+      );
     } catch (error) {
       addToast(
         error instanceof Error ? error.message : "Unable to create employee",
@@ -303,7 +307,7 @@ export const EmployeesPage: React.FC = () => {
             <div>
               <strong>Add an employee</strong>
               <span>
-                Set up the employee account and assign their team.
+                Add their profile and they will receive a secure password setup link.
               </span>
             </div>
             <button
@@ -349,26 +353,6 @@ export const EmployeesPage: React.FC = () => {
                   })
                 }
               />
-            </label>
-            <label className="task-create-field">
-              <span>
-                Initial password <b>*</b>
-              </span>
-              <input
-                type="password"
-                required
-                minLength={8}
-                maxLength={72}
-                autoComplete="new-password"
-                value={employeeForm.password}
-                onChange={(event) =>
-                  setEmployeeForm({
-                    ...employeeForm,
-                    password: event.target.value,
-                  })
-                }
-              />
-              <small>Share this password securely with the employee.</small>
             </label>
             <label className="task-create-field">
               <span>Job title</span>

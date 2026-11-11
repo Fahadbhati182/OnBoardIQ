@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import supabase from "../config/supabase.js";
@@ -12,13 +12,24 @@ import {
   verifyRefreshToken,
 } from "../utils/authTokens.js";
 import ApiError from "../utils/ApiError.js";
+import {
+  EMPLOYEE_LIST_CACHE_NAMESPACE,
+  getCacheGeneration,
+  getCachedJson,
+  invalidateCacheGeneration,
+  setCachedJson,
+} from "../utils/cache.js";
+import { sendEmployeeWelcomeEmail } from "../services/employeeEmail.js";
 
 const USER_COLUMNS =
   "id, name, email, password_hash, role, department_id, job_title, joining_date, team_id, is_active";
-const DUMMY_PASSWORD_HASH = bcrypt.hashSync("invalid-password-placeholder",12,);
+const EMPLOYEE_INVITE_COLUMNS =
+  "id, name, email, role, department_id, job_title, joining_date, team_id, is_active";
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync("invalid-password-placeholder", 12);
 const APPLICATION_ROLES = ["ENGINEER", "ENGINEERING_ADMIN"];
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const PASSWORD_SETUP_TTL_MS = 60 * 60 * 1000;
 
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
@@ -29,6 +40,72 @@ const REFRESH_COOKIE_OPTIONS = {
 
 function hashToken(token) {
   return createHash("sha256").update(token).digest("hex");
+}
+
+function validateNewPassword(password) {
+  if (typeof password !== "string") {
+    throw new ApiError(400, "Password is required");
+  }
+  const passwordBytes = Buffer.byteLength(password, "utf8");
+  if (passwordBytes < 8 || passwordBytes > 72) {
+    throw new ApiError(400, "Password must be between 8 and 72 bytes");
+  }
+  return password;
+}
+
+async function sendPasswordSetupInvite(employee) {
+  const token = randomBytes(32).toString("base64url");
+  const tokenHash = hashToken(token);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + PASSWORD_SETUP_TTL_MS);
+  const { error: revokeError } = await supabase
+    .from("employee_password_setup_tokens")
+    .update({ used_at: now.toISOString() })
+    .eq("user_id", employee.id)
+    .is("used_at", null);
+  if (revokeError) {
+    handleDatabaseError(revokeError, "previous password setup invite revocation");
+  }
+
+  const { error: insertError } = await supabase
+    .from("employee_password_setup_tokens")
+    .insert({
+      user_id: employee.id,
+      token_hash: tokenHash,
+      expires_at: expiresAt.toISOString(),
+    });
+  if (insertError) {
+    handleDatabaseError(insertError, "password setup invite creation");
+  }
+
+  const setupUrl = new URL(
+    "/set-password",
+    process.env.FRONTEND_URL ||
+      process.env.CLIENT_URL ||
+      "http://localhost:5173",
+  );
+  setupUrl.hash = new URLSearchParams({ token }).toString();
+
+  try {
+    await sendEmployeeWelcomeEmail({ employee, setupUrl: setupUrl.toString() });
+    return true;
+  } catch (error) {
+    console.error(
+      "Employee invitation email failed:",
+      error instanceof Error ? error.message : String(error),
+    );
+    const { error: revokeTokenError } = await supabase
+      .from("employee_password_setup_tokens")
+      .update({ used_at: new Date().toISOString() })
+      .eq("token_hash", tokenHash);
+    if (revokeTokenError) {
+      console.error(
+        "Failed to revoke undelivered employee invitation:",
+        revokeTokenError.message,
+      );
+    }
+    return false;
+  }
 }
 
 function validateApplicationRole(role) {
@@ -100,7 +177,10 @@ function optionalDate(value, field) {
     throw new ApiError(400, `${field} must be a valid date`);
   }
   const date = new Date(`${value}T00:00:00.000Z`);
-  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.toISOString().slice(0, 10) !== value
+  ) {
     throw new ApiError(400, `${field} must be a valid date`);
   }
   return value;
@@ -158,11 +238,16 @@ export async function createEmployee(req, res) {
   const { name, normalizedEmail, password } = validateCredentials(
     req.body?.name,
     req.body?.email,
-    req.body?.password,
+    randomBytes(32).toString("base64url"),
     true,
   );
-  const { departmentId, teamId, joiningDate, jobTitle, isActive = true } =
-    req.body ?? {};
+  const {
+    departmentId,
+    teamId,
+    joiningDate,
+    jobTitle,
+    isActive = true,
+  } = req.body ?? {};
   const department = optionalUuid(departmentId, "departmentId");
   const team = optionalUuid(teamId, "teamId");
   const joining = optionalDate(joiningDate, "joiningDate");
@@ -211,9 +296,25 @@ export async function createEmployee(req, res) {
     throw new ApiError(500, "Employee creation did not return an account");
   }
 
+  await invalidateCacheGeneration(EMPLOYEE_LIST_CACHE_NAMESPACE);
+
+  let inviteEmailSent = false;
+  try {
+    inviteEmailSent = await sendPasswordSetupInvite(
+      await getUserProfile(user),
+    );
+  } catch (error) {
+    console.error(
+      "Employee invitation could not be created:",
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+
   res.status(201).json({
     success: true,
-    message: "Employee created",
+    message: inviteEmailSent
+      ? "Employee created and invitation email sent"
+      : "Employee created, but the invitation email could not be sent",
     data: {
       id: user.id,
       name: user.name,
@@ -224,8 +325,68 @@ export async function createEmployee(req, res) {
       joiningDate: user.joining_date,
       teamId: user.team_id,
       isActive: user.is_active,
+      inviteEmailSent,
     },
   });
+}
+
+export async function resendEmployeeInvite(req, res) {
+  const employeeId = req.params.employeeId;
+  if (typeof employeeId !== "string" || !UUID_PATTERN.test(employeeId)) {
+    throw new ApiError(400, "employeeId must be a valid UUID");
+  }
+
+  const { data: employee, error } = await supabase
+    .from("users")
+    .select(EMPLOYEE_INVITE_COLUMNS)
+    .eq("id", employeeId)
+    .eq("role", "ENGINEER")
+    .maybeSingle();
+  if (error) handleDatabaseError(error, "employee invitation lookup");
+  if (!employee) throw new ApiError(404, "Employee was not found");
+
+  let sent;
+  try {
+    sent = await sendPasswordSetupInvite(await getUserProfile(employee));
+  } catch (inviteError) {
+    console.error(
+      "Employee invitation could not be created:",
+      inviteError instanceof Error ? inviteError.message : String(inviteError),
+    );
+    sent = false;
+  }
+
+  if (!sent) {
+    return res.status(503).json({
+      success: false,
+      message: "The employee account exists, but the invitation email could not be sent",
+    });
+  }
+  return res.json({
+    success: true,
+    message: "Employee invitation email sent",
+  });
+}
+
+export async function completeEmployeePasswordSetup(req, res) {
+  const token = req.body?.token;
+  if (typeof token !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(token)) {
+    throw new ApiError(400, "A valid password setup token is required");
+  }
+  const password = validateNewPassword(req.body?.password);
+  const passwordHash = await bcrypt.hash(password, 12);
+  const { data, error } = await supabase.rpc(
+    "consume_employee_password_setup_token",
+    {
+      p_token_hash: hashToken(token),
+      p_password_hash: passwordHash,
+    },
+  );
+  if (error) handleDatabaseError(error, "employee password setup");
+  if (data !== true) {
+    throw new ApiError(400, "This password setup link is invalid or expired");
+  }
+  res.json({ success: true, message: "Password set successfully" });
 }
 
 export async function login(req, res) {
@@ -422,7 +583,10 @@ export async function updateCurrentUser(req, res) {
   if (Object.prototype.hasOwnProperty.call(req.body ?? {}, "name")) {
     const name = req.body.name;
     if (typeof name !== "string" || !name.trim() || name.trim().length > 150) {
-      throw new ApiError(400, "Name is required and must be 150 characters or fewer");
+      throw new ApiError(
+        400,
+        "Name is required and must be 150 characters or fewer",
+      );
     }
     updates.name = name.trim();
   }
@@ -453,6 +617,7 @@ export async function updateCurrentUser(req, res) {
   }
   if (error) handleDatabaseError(error, "profile update");
   if (!user) throw new ApiError(404, "User was not found");
+  await invalidateCacheGeneration(EMPLOYEE_LIST_CACHE_NAMESPACE);
 
   res.status(200).json({
     success: true,
@@ -462,6 +627,16 @@ export async function updateCurrentUser(req, res) {
 }
 
 export async function listEmployees(req, res) {
+  const generation = await getCacheGeneration(EMPLOYEE_LIST_CACHE_NAMESPACE);
+  const cacheKey =
+    generation === null
+      ? null
+      : `onboardiq:${EMPLOYEE_LIST_CACHE_NAMESPACE}:v${generation}`;
+  if (cacheKey) {
+    const cachedResponse = await getCachedJson(cacheKey);
+    if (cachedResponse) return res.status(200).json(cachedResponse);
+  }
+
   const { data, error } = await supabase
     .from("users")
     .select(
@@ -474,7 +649,7 @@ export async function listEmployees(req, res) {
     handleDatabaseError(error, "employee directory lookup");
   }
 
-  res.status(200).json({
+  const response = {
     success: true,
     data: (data || []).map((employee) => ({
       id: employee.id,
@@ -487,7 +662,9 @@ export async function listEmployees(req, res) {
       teamId: employee.team_id,
       isActive: employee.is_active,
     })),
-  });
+  };
+  if (cacheKey) await setCachedJson(cacheKey, response, 300);
+  res.status(200).json(response);
 }
 
 export async function listDepartments(req, res) {

@@ -3,11 +3,13 @@ import {
   getCurrentUser,
   updateCurrentUser,
   createEmployee,
+  completeEmployeePasswordSetup,
   listEmployees,
   listDepartments,
   login,
   logout,
   refresh,
+  resendEmployeeInvite,
 } from "../controllers/authController.js";
 import {
   assignEngineerToTeam,
@@ -20,6 +22,7 @@ const router = Router();
 router.post("/login", login);
 router.post("/refresh", refresh);
 router.post("/logout", logout);
+router.post("/password-setup", completeEmployeePasswordSetup);
 router.get("/me", requireAuth, getCurrentUser);
 router.patch("/me", requireAuth, updateCurrentUser);
 router.post(
@@ -27,6 +30,12 @@ router.post(
   requireAuth,
   allowedRoles(["ENGINEERING_ADMIN"]),
   createEmployee,
+);
+router.post(
+  "/employees/:employeeId/password-setup",
+  requireAuth,
+  allowedRoles(["ENGINEERING_ADMIN"]),
+  resendEmployeeInvite,
 );
 router.get(
   "/employees",

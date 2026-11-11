@@ -1,5 +1,9 @@
 import supabase from "../config/supabase.js";
 import ApiError from "../utils/ApiError.js";
+import {
+  EMPLOYEE_LIST_CACHE_NAMESPACE,
+  invalidateCacheGeneration,
+} from "../utils/cache.js";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -137,5 +141,6 @@ export async function assignEngineerToTeam(req, res) {
     .select("id, name, email, role, team_id, is_active")
     .single();
   if (error) throw new ApiError(500, "An unexpected database error occurred");
+  await invalidateCacheGeneration(EMPLOYEE_LIST_CACHE_NAMESPACE);
   res.json({ success: true, data });
 }

@@ -319,6 +319,8 @@ npm install
 
 Configure your environment variables in a `.env` file.
 
+Employee invitation emails use SMTP settings from `backend/.env` (`EMAIL_USER` and `EMAIL_PASS`; Gmail app passwords are recommended). Passwords are never emailed: each employee receives their profile details and a one-time password setup link that expires after one hour. Before using this flow, apply `backend/supabase/migrations/202611120001_employee_password_setup.sql` to your Supabase database. If email delivery fails, the account is still created and an administrator can resend the invite with `POST /api/auth/employees/{employeeId}/password-setup`.
+
 Example:
 
 ```env
@@ -344,6 +346,8 @@ Start the backend using the development script configured in `package.json`:
 ```bash
 npm run dev
 ```
+
+Open the interactive backend API reference at `http://localhost:3000/api-docs` by default (OpenAPI JSON: `http://localhost:3000/api-docs.json`); replace `3000` with the configured `PORT` if needed. The Python AI service exposes its own Swagger UI at `http://localhost:8000/docs` when it is running.
 
 ### 3. Set Up the Frontend
 
@@ -418,6 +422,8 @@ Keep credentials and environment-specific settings outside source code.
 | `JWT_ACCESS_EXPIRES_IN` | Access-token expiration duration. |
 | `REFRESH_TOKEN_EXPIRES_DAYS` | Refresh-session lifetime. |
 | `CLIENT_URL` | Frontend origin used for CORS configuration. |
+| `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_SECURE`, `EMAIL_USER`, `EMAIL_PASS` | SMTP server and sender credentials for employee invitation emails. |
+| `REDIS_URL` or `REDIS_HOST` / `REDIS_PORT` | Optional Redis cache connection; host/port defaults to `127.0.0.1:6379`. The API continues without cache when Redis is unavailable. |
 | `VITE_API_URL` | Backend API URL used by the frontend. |
 | AI provider credentials | Authentication for the selected LLM provider. |
 | Vector database configuration | Connection settings for the selected vector database. |

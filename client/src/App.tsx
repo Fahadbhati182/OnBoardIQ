@@ -22,14 +22,17 @@ import { CompanyInfoPage } from './pages/CompanyInfoPage';
 import { TaskManagementPage } from './pages/TaskManagementPage';
 import { TaskCreatePage } from './pages/TaskCreatePage';
 import { DocumentUploadPage } from './pages/DocumentUploadPage';
+import { SetPasswordPage } from './pages/SetPasswordPage';
 import { pageFromPath, pagePaths } from './router';
 
 const AppContent: React.FC = () => {
   const { currentPage, isInitializing, isAuthenticated, currentUserRole } = useApp();
   const location = useLocation();
   const navigate = useNavigate();
+  const isPasswordSetup = location.pathname === '/set-password';
 
   useEffect(() => {
+    if (isPasswordSetup) return;
     if (isInitializing) return;
     if (!isAuthenticated && location.pathname !== pagePaths.login) {
       navigate(pagePaths.login, { replace: true });
@@ -40,7 +43,11 @@ const AppContent: React.FC = () => {
         replace: true,
       });
     }
-  }, [isAuthenticated, isInitializing, location.pathname, navigate]);
+  }, [isAuthenticated, isInitializing, isPasswordSetup, location.pathname, navigate]);
+
+  if (isPasswordSetup) {
+    return <SetPasswordPage />;
+  }
 
   if (isInitializing) {
     return (

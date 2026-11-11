@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import path from "node:path";
 import supabase from "../config/supabase.js";
 import ApiError from "../utils/ApiError.js";
@@ -18,9 +19,17 @@ import {
   isAdministrator,
 } from "../services/documentAuthorization.js";
 import { sendKafkaMessage } from "../config/kafka.js";
+import {
+  getCacheGeneration,
+  getCachedJson,
+  invalidateCacheGeneration,
+  setCachedJson,
+} from "../utils/cache.js";
 
 const DOCUMENT_COLUMNS =
   "id, title, description, document_type, status, department_id, team_id, access_scope, uploaded_by, created_at, updated_at";
+const DOCUMENT_LIST_CACHE_NAMESPACE = "documents-list";
+const DOCUMENT_LIST_CACHE_TTL_SECONDS = 300;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -154,6 +163,25 @@ function validateUpload(file) {
     throw new ApiError(413, "The uploaded file is too large");
 }
 
+function getDocumentListCacheKey(generation, req, listType) {
+  const query = {
+    role: req.user.role,
+    teamId: req.user.team_id || null,
+    search: req.query.search || "",
+    documentType: req.query.documentType || "",
+    status: req.query.status || "",
+    page: req.query.page || "1",
+    limit: req.query.limit || "20",
+  };
+  const serializedQuery = JSON.stringify(query);
+  const queryHash = createHash("sha256").update(serializedQuery).digest("hex");
+  return `onboardiq:${DOCUMENT_LIST_CACHE_NAMESPACE}:v${generation}:${listType}:${queryHash}`;
+}
+
+async function invalidateDocumentListCache() {
+  await invalidateCacheGeneration(DOCUMENT_LIST_CACHE_NAMESPACE);
+}
+
 export async function publishDocumentEvent(document, version) {
   let teamData = null;
 
@@ -207,9 +235,12 @@ export async function listDocuments(req, res) {
     .from("documents")
     .select(DOCUMENT_COLUMNS, { count: "exact" })
     .order("updated_at", { ascending: false });
+
   if (!isAdministrator(req.user)) query = query.eq("status", "PUBLISHED");
+
   if (req.query.search)
     query = query.ilike("title", `%${text(req.query.search, "search")}%`);
+
   if (req.query.documentType) {
     const documentType = text(req.query.documentType, "documentType");
     if (!DOCUMENT_TYPES.includes(documentType)) {
@@ -228,8 +259,21 @@ export async function listDocuments(req, res) {
     100,
     Math.max(1, Number.parseInt(req.query.limit || "20", 10)),
   );
+  const generation = await getCacheGeneration(
+    DOCUMENT_LIST_CACHE_NAMESPACE,
+  );
+  const cacheKey =
+    generation === null
+      ? null
+      : getDocumentListCacheKey(generation, req, "all");
+  if (cacheKey) {
+    const cachedResponse = await getCachedJson(cacheKey);
+    if (cachedResponse) return res.json(cachedResponse);
+  }
+
   const { data, error } = await query;
   if (error) throw new ApiError(500, "An unexpected database error occurred");
+
   const permitted = [];
   for (const document of data || []) {
     if (
@@ -239,13 +283,18 @@ export async function listDocuments(req, res) {
       permitted.push(mapDocument(document, await latestVersion(document.id)));
     }
   }
+
   const total = permitted.length;
   const paged = permitted.slice((page - 1) * limit, page * limit);
-  res.json({
+  const response = {
     success: true,
     data: paged,
     pagination: { page, limit, total },
-  });
+  };
+  if (cacheKey) {
+    await setCachedJson(cacheKey, response, DOCUMENT_LIST_CACHE_TTL_SECONDS);
+  }
+  res.json(response);
 }
 
 export async function listEmployeeDocuments(req, res) {
@@ -272,6 +321,18 @@ export async function listEmployeeDocuments(req, res) {
     query = query.eq("document_type", documentType);
   }
 
+  const generation = await getCacheGeneration(
+    DOCUMENT_LIST_CACHE_NAMESPACE,
+  );
+  const cacheKey =
+    generation === null
+      ? null
+      : getDocumentListCacheKey(generation, req, "employee");
+  if (cacheKey) {
+    const cachedResponse = await getCachedJson(cacheKey);
+    if (cachedResponse) return res.json(cachedResponse);
+  }
+
   const { data, error } = await query;
   if (error) throw new ApiError(500, "An unexpected database error occurred");
 
@@ -281,11 +342,15 @@ export async function listEmployeeDocuments(req, res) {
       permitted.push(mapDocument(document, await latestVersion(document.id)));
     }
   }
-  res.json({
+  const response = {
     success: true,
     data: permitted.slice((page - 1) * limit, page * limit),
     pagination: { page, limit, total: permitted.length },
-  });
+  };
+  if (cacheKey) {
+    await setCachedJson(cacheKey, response, DOCUMENT_LIST_CACHE_TTL_SECONDS);
+  }
+  res.json(response);
 }
 
 export async function getDocument(req, res) {
@@ -316,6 +381,7 @@ export async function uploadDocument(req, res) {
       .single();
 
     if (documentError) throw documentError;
+    await invalidateDocumentListCache();
 
     const { data: version, error: versionError } = await supabase
       .from("document_versions")
@@ -334,6 +400,7 @@ export async function uploadDocument(req, res) {
       .single();
 
     if (versionError) throw versionError;
+    await invalidateDocumentListCache();
 
     console.log(document, {
       ...version,
@@ -379,6 +446,7 @@ export async function updateDocument(req, res) {
     .select(DOCUMENT_COLUMNS)
     .single();
   if (error) throw new ApiError(500, "An unexpected database error occurred");
+  await invalidateDocumentListCache();
   const version = await latestVersion(data.id);
   if (version) await publishDocumentEvent(data, version);
   res.json({
@@ -397,6 +465,7 @@ export async function archiveDocument(req, res) {
     .select(DOCUMENT_COLUMNS)
     .single();
   if (error) throw new ApiError(500, "An unexpected database error occurred");
+  await invalidateDocumentListCache();
   const version = await latestVersion(data.id);
   if (version) await publishDocumentEvent(data, version);
   res.json({
@@ -417,6 +486,7 @@ export async function publishDocument(req, res) {
     .select(DOCUMENT_COLUMNS)
     .single();
   if (error) throw new ApiError(500, "An unexpected database error occurred");
+  await invalidateDocumentListCache();
   const version = await latestVersion(data.id);
   if (version) await publishDocumentEvent(data, version);
   res.json({
@@ -465,11 +535,13 @@ export async function uploadVersion(req, res) {
       )
       .single();
     if (error) throw error;
+    await invalidateDocumentListCache();
     const { error: updateError } = await supabase
       .from("documents")
       .update({ updated_at: new Date().toISOString() })
       .eq("id", document.id);
     if (updateError) throw new ApiError(500, "Document metadata update failed");
+    await invalidateDocumentListCache();
     await publishDocumentEvent(document, {
       ...data,
       storage_path: stored.storageKey,

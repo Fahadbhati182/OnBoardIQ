@@ -24,12 +24,12 @@ export interface EmployeeSummary {
   joiningDate: string | null;
   teamId: string | null;
   isActive: boolean;
+  inviteEmailSent?: boolean;
 }
 
 export interface CreateEmployeeInput {
   name: string;
   email: string;
-  password: string;
   jobTitle: string;
   joiningDate: string | null;
   teamId: string | null;
